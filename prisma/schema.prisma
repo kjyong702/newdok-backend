@@ -3,35 +3,34 @@ generator client {
 }
 
 datasource db {
-  provider      = "mysql"
-  url           = env("DATABASE_URL")
-  relationMode  = "prisma"
+  provider = "mysql"
+  url      = env("DATABASE_URL")
 }
 
 model Newsletter {
-  id                  Int         @default(autoincrement()) @id
-  industries          Industry[]
-  interests           Interest[]
-  name                String      @unique
-  first_description   String
-  second_description  String
-  detail_description  String
-  publication_cycle   String
-  subscribe_url       String      @unique
-  preview_url         String      @unique
-  image_url           String
-  createdAt           DateTime    @default(now())
-  updatedAt           DateTime    @updatedAt
+  id                      Int                  @id @default(autoincrement())
+  name                    String               @unique
+  first_description       String
+  second_description      String
+  detail_description      String
+  publication_cycle       String
+  subscribe_url           String               @unique
+  preview_url             String               @unique
+  image_url               String
+  createdAt               DateTime             @default(now())
+  updatedAt               DateTime             @updatedAt
+  industries              Industry[]
+  interests               Interest[]
 }
 
 model Industry {
-  id          Int           @default(autoincrement()) @id
-  name        String        @unique
-  newsletters Newsletter[]
+  id                 Int                     @id @default(autoincrement())
+  name               String                  @unique
+  newsletters        Newsletter[]
 }
 
 model Interest {
-  id          Int           @default(autoincrement()) @id
-  name        String        @unique
-  newsletters Newsletter[]
+  id                 Int                    @id @default(autoincrement())
+  name               String                 @unique
+  newsletters        Newsletter[]
 }
