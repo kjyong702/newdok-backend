@@ -6,7 +6,13 @@ export class NewslettersService {
   constructor(private prisma: PrismaService) {}
 
   async getRecommendedNewsletters(industryId: string, interestIds: string[]) {
-    const interestIdsOfNum = interestIds.map((id) => parseInt(id));
+    let interestIdsOfNum = [];
+
+    if (typeof interestIds === 'string') {
+      interestIdsOfNum.push(parseInt(interestIds));
+    } else {
+      interestIdsOfNum = interestIds.map((id) => parseInt(id));
+    }
 
     const intersection = await this.prisma.newsletter.findMany({
       where: {
@@ -31,22 +37,35 @@ export class NewslettersService {
       },
     });
 
+    const union1 = await this.prisma.newsletter.findMany({
+      where: {
+        industries: {
+          some: {
+            id: parseInt(industryId),
+          },
+        },
+      },
+    });
+    const ids1 = union1.map((newsletter) => newsletter.id);
+
+    const union2 = await this.prisma.newsletter.findMany({
+      where: {
+        interests: {
+          some: {
+            id: { in: interestIdsOfNum },
+          },
+        },
+      },
+    });
+    const ids2 = union2.map((newsletter) => newsletter.id);
+
+    const unionIds = ids1.concat(ids2);
+    const set = new Set(unionIds);
+    const uniqueUnionIds = [...set];
+
     const union = await this.prisma.newsletter.findMany({
       where: {
-        OR: [
-          {
-            industries: {
-              some: {
-                id: parseInt(industryId),
-              },
-            },
-            interests: {
-              some: {
-                id: { in: interestIdsOfNum },
-              },
-            },
-          },
-        ],
+        id: { in: uniqueUnionIds },
       },
       include: {
         industries: true,
@@ -55,16 +74,6 @@ export class NewslettersService {
     });
 
     return { intersection, union };
-  }
-
-  async getNewsletterById(id: string) {
-    return this.prisma.newsletter.findUnique({
-      where: { id: parseInt(id) },
-      include: {
-        industries: true,
-        interests: true,
-      },
-    });
   }
 
   async getNewslettersByIndustry(id: string) {
