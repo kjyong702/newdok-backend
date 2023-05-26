@@ -17,4 +17,9 @@ export class NewslettersController {
   async getNewslettersByIndustry(@Param('id') id: string) {
     return this.newslettersService.getNewslettersByIndustry(id);
   }
+
+  @Get('/filtered/interest/:id')
+  async getNewslettersByInterest(@Param('id') id: string) {
+    return this.newslettersService.getNewslettersByInterest(id);
+  }
 }

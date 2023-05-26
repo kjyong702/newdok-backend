@@ -91,4 +91,20 @@ export class NewslettersService {
       },
     });
   }
+
+  async getNewslettersByInterest(id: string) {
+    return this.prisma.newsletter.findMany({
+      where: {
+        interests: {
+          some: {
+            id: parseInt(id),
+          },
+        },
+      },
+      include: {
+        industries: true,
+        interests: true,
+      },
+    });
+  }
 }
