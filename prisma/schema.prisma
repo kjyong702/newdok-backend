@@ -8,27 +8,33 @@ datasource db {
 }
 
 model User {
-  id                    Int                   @id @default(autoincrement())
-  name                  String
-  password              String
-  phone_number          String                @unique
-  email                 String                @unique
-  nickname              String                @unique
-  birth                 DateTime?
-  gender                String
-  createdAt             DateTime              @default(now())
-  updatedAt             DateTime              @updatedAt
-  newsletters           NewslettersOnUsers[]
+  id                Int                   @id @default(autoincrement())
+  login_id          String                @unique
+  password          String                
+  phone_number      String                
+  subscribe_email   String                @unique
+  nickname          String
+  birth_year        String
+  gender            String
+  industry          Industry              @relation(fields: [industry_id], references: [id])
+  industry_id       Int
+  interests         InterestsOnUsers[]
+  newsletters       NewslettersOnUsers[]
+  articles          Article[]
 }
 
-model NewslettersOnUsers {
-  user            User        @relation(fields: [user_id], references: [id])
-  user_id         Int
-  newsletter      Newsletter  @relation(fields: [newsletter_id], references: [id])
-  newsletter_id   Int
-  createdAt       DateTime    @default(now())
+model Industry {
+  id                 Int                     @id @default(autoincrement())
+  name               String                  @unique
+  users              User[]
+  newsletters        Newsletter[]
+}
 
-  @@id([user_id, newsletter_id])
+model Interest {
+  id                 Int                    @id @default(autoincrement())
+  name               String                 @unique
+  users              InterestsOnUsers[]
+  newsletters        Newsletter[]
 }
 
 model Newsletter {
@@ -44,18 +50,38 @@ model Newsletter {
   createdAt               DateTime             @default(now())
   updatedAt               DateTime             @updatedAt
   users                   NewslettersOnUsers[]
+  articles                Article[]
   industries              Industry[]
   interests               Interest[]
 }
 
-model Industry {
-  id                 Int                     @id @default(autoincrement())
-  name               String                  @unique
-  newsletters        Newsletter[]
+model Article {
+  id              Int           @id @default(autoincrement())
+  title           String
+  body            String
+  date            DateTime
+  user            User          @relation(fields: [user_id], references: [id])
+  user_id         Int
+  newsletter      Newsletter    @relation(fields: [newsletter_id], references: [id])
+  newsletter_id   Int
 }
 
-model Interest {
-  id                 Int                    @id @default(autoincrement())
-  name               String                 @unique
-  newsletters        Newsletter[]
+model InterestsOnUsers {
+  user          User      @relation(fields: [user_id], references: [id])
+  user_id       Int
+  interest      Interest  @relation(fields: [interest_id], references: [id])
+  interest_id   Int
+  createdAt     DateTime  @default(now())
+
+  @@id([user_id, interest_id])
+}
+
+model NewslettersOnUsers {
+  user            User        @relation(fields: [user_id], references: [id])
+  user_id         Int
+  newsletter      Newsletter  @relation(fields: [newsletter_id], references: [id])
+  newsletter_id   Int
+  createdAt       DateTime    @default(now())
+
+  @@id([user_id, newsletter_id])
 }
