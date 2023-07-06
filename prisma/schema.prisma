@@ -8,31 +8,31 @@ datasource db {
 }
 
 model User {
-  id               Int                   @id @default(autoincrement())
-  loginId          String                @unique
-  password         String                
-  phoneNumber      String                
-  subscribeEmail   String                @unique
+  id               Int                    @id @default(autoincrement())
+  loginId          String                 @unique
+  password         String                 
+  phoneNumber      String                 
+  subscribeEmail   String                 @unique
   nickname         String
   birthYear        String
   gender           String
-  industry         Industry              @relation(fields: [industryId], references: [id])
-  industryId       Int
+  industry         Industry?              @relation(fields: [industryId], references: [id])
+  industryId       Int?
   interests        InterestsOnUsers[]
   newsletters      NewslettersOnUsers[]
   articles         Article[]
 }
 
 model Industry {
-  id                 Int                     @id @default(autoincrement())
-  name               String                  @unique
+  id                 Int                 @id @default(autoincrement())
+  name               String              @unique
   users              User[]
   newsletters        Newsletter[]
 }
 
 model Interest {
-  id                 Int                    @id @default(autoincrement())
-  name               String                 @unique
+  id                 Int                  @id @default(autoincrement())
+  name               String               @unique
   users              InterestsOnUsers[]
   newsletters        Newsletter[]
 }
@@ -47,6 +47,8 @@ model Newsletter {
   subscribeUrl           String               @unique
   previewUrl             String               @unique
   imageUrl               String
+  brandEmail             String               @unique
+  doubleCheck            Boolean              @default(false)
   createdAt              DateTime             @default(now())
   updatedAt              DateTime             @updatedAt
   users                  NewslettersOnUsers[]
