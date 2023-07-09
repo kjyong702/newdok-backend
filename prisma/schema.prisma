@@ -48,6 +48,7 @@ model Newsletter {
   previewUrl             String               @unique
   imageUrl               String
   brandEmail             String               @unique
+  isSubscribed           String               @default("구독 전")
   doubleCheck            Boolean              @default(false)
   createdAt              DateTime             @default(now())
   updatedAt              DateTime             @updatedAt
