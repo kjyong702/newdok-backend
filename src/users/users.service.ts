@@ -8,9 +8,9 @@ import * as bcrypt from 'bcrypt';
 @Injectable()
 export class UsersService {
   constructor(
+    private newslettersService: NewslettersService,
     private prisma: PrismaService,
     private jwtService: JwtService,
-    private newslettersService: NewslettersService,
   ) {}
 
   async signup(createUserDto: CreateUserDto) {
@@ -88,10 +88,6 @@ export class UsersService {
     return updatedUser;
   }
 
-  // 뉴스레터 리스트 반환 시, 유저의 구독 여부를 함께 보낸다
-  // 1. User의 industry와 interests 부분이 null이므로 이를 연결시켜야한다.
-  // 2. industry 경우 존재하는 Industry 데이터와 connect 작업
-  // 3. interest의 경우 Interest 데이터가 아니라 InterestsOnUsers 데이터와 연결되어야 하므로 이는 존재하지 않는 데이터를 create 먼저 해야한다(이게 중요)
   async preInvestigate(
     userId: number,
     industryId: string,
