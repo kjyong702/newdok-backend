@@ -119,10 +119,7 @@ export class UsersService {
     });
 
     const { intersection, union } =
-      await this.newslettersService.getRecommendedNewsletters(
-        industryId,
-        interestIds,
-      );
+      await this.newslettersService.getRecommendedNewsletters(userId);
 
     if (intersection.length >= 6) {
       return intersection.slice(0, 6);

@@ -5,14 +5,21 @@ import { PrismaService } from '../prisma.service';
 export class NewslettersService {
   constructor(private prisma: PrismaService) {}
 
-  async getRecommendedNewsletters(industryId: string, interestIds: string[]) {
-    let interestIdsOfNum = [];
+  async getRecommendedNewsletters(userId: number) {
+    const user = await this.prisma.user.findUnique({
+      where: { id: userId },
+      include: { interests: true },
+    });
 
-    if (typeof interestIds === 'string') {
-      interestIdsOfNum.push(parseInt(interestIds));
-    } else {
-      interestIdsOfNum = interestIds.map((id) => parseInt(id));
-    }
+    const isSubscribedForIntersection = [];
+    const isSubscribedForUnion = [];
+
+    const subscribedNewsletterIdsForUser =
+      await this.prisma.newslettersOnUsers.findMany({
+        where: { userId },
+      });
+
+    const interestIds = user.interests.map((data) => data.interestId);
 
     const intersection = await this.prisma.newsletter.findMany({
       where: {
@@ -20,12 +27,12 @@ export class NewslettersService {
           {
             industries: {
               some: {
-                id: parseInt(industryId),
+                id: user.industryId,
               },
             },
             interests: {
               some: {
-                id: { in: interestIdsOfNum },
+                id: { in: interestIds },
               },
             },
           },
@@ -36,12 +43,19 @@ export class NewslettersService {
         interests: true,
       },
     });
+    intersection.forEach((value: any) => {
+      if (!subscribedNewsletterIdsForUser.includes(value.id)) {
+        isSubscribedForIntersection.push(
+          Object.assign(value, { isSubscribed: '구독 전' }),
+        );
+      }
+    });
 
     const union1 = await this.prisma.newsletter.findMany({
       where: {
         industries: {
           some: {
-            id: parseInt(industryId),
+            id: user.industryId,
           },
         },
       },
@@ -52,7 +66,7 @@ export class NewslettersService {
       where: {
         interests: {
           some: {
-            id: { in: interestIdsOfNum },
+            id: { in: interestIds },
           },
         },
       },
@@ -72,8 +86,18 @@ export class NewslettersService {
         interests: true,
       },
     });
+    union.forEach((value: any) => {
+      if (!subscribedNewsletterIdsForUser.includes(value.id)) {
+        isSubscribedForUnion.push(
+          Object.assign(value, { isSubscribed: '구독 전' }),
+        );
+      }
+    });
 
-    return { intersection, union };
+    return {
+      intersection: isSubscribedForIntersection,
+      union: isSubscribedForUnion,
+    };
   }
 
   async getNewslettersByIndustry(id: string) {
