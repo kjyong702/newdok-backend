@@ -14,10 +14,16 @@ export class NewslettersService {
     const isSubscribedForIntersection = [];
     const isSubscribedForUnion = [];
 
-    const subscribedNewsletterIdsForUser =
-      await this.prisma.newslettersOnUsers.findMany({
+    const subscribedNewsletters = await this.prisma.newslettersOnUsers.findMany(
+      {
         where: { userId },
-      });
+      },
+    );
+
+    const subscribedNewsletterIds = [];
+    subscribedNewsletters.forEach((value: any) =>
+      subscribedNewsletterIds.push(value.newsletterId),
+    );
 
     const interestIds = user.interests.map((data) => data.interestId);
 
@@ -44,7 +50,7 @@ export class NewslettersService {
       },
     });
     intersection.forEach((value: any) => {
-      if (!subscribedNewsletterIdsForUser.includes(value.id)) {
+      if (!subscribedNewsletterIds.includes(value.id)) {
         isSubscribedForIntersection.push(
           Object.assign(value, { isSubscribed: '구독 전' }),
         );
@@ -87,7 +93,7 @@ export class NewslettersService {
       },
     });
     union.forEach((value: any) => {
-      if (!subscribedNewsletterIdsForUser.includes(value.id)) {
+      if (!subscribedNewsletterIds.includes(value.id)) {
         isSubscribedForUnion.push(
           Object.assign(value, { isSubscribed: '구독 전' }),
         );
