@@ -62,6 +62,7 @@ model Article {
   title          String
   body           String
   date           DateTime
+  isRead         Boolean       @default(false)
   user           User          @relation(fields: [userId], references: [id])
   userId         Int
   newsletter     Newsletter    @relation(fields: [newsletterId], references: [id])

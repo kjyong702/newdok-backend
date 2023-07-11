@@ -4,7 +4,6 @@ import {
   Post,
   Patch,
   Query,
-  Param,
   Body,
   Req,
   UseGuards,
@@ -12,7 +11,6 @@ import {
 import { UsersService } from './users.service';
 import { CreateUserDto } from './dtos/create-user.dto';
 import { AuthGuard } from '../guards/auth.guard';
-import { User } from '@prisma/client';
 
 @Controller('users')
 export class UsersController {
@@ -36,6 +34,11 @@ export class UsersController {
   @Get('/check/phoneNumber')
   async getUsersByPhoneNumber(@Query('phoneNumber') phoneNumber: string) {
     return this.usersService.getUsersByPhoneNumber(phoneNumber);
+  }
+
+  @Post('/auth/SMS')
+  async sendSMS(@Body() body: Record<string, string>) {
+    return this.usersService.sendSMS(body.phoneNumber);
   }
 
   @Patch('reset/password')
