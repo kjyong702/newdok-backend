@@ -18,7 +18,10 @@ export class UsersService {
     const { loginId, password, phoneNumber, nickname, birthYear, gender } =
       createUserDto;
     const subscribeEmail = 'test@newdok.site'; // 추후 이메일 자동부여 기능 구현
+    const subscribedPassword = '!Kktest';
+
     const hashedPassword = await bcrypt.hash(password, 10);
+    const hashedSubscribedPassword = await bcrypt.hash(subscribedPassword, 10);
 
     const user = await this.prisma.user.create({
       data: {
@@ -26,6 +29,7 @@ export class UsersService {
         password: hashedPassword,
         phoneNumber,
         subscribeEmail,
+        subscribePassword: hashedSubscribedPassword,
         nickname,
         birthYear,
         gender,
