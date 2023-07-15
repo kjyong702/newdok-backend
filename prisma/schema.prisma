@@ -48,6 +48,7 @@ model Newsletter {
   previewUrl             String               @unique
   imageUrl               String
   brandEmail             String               @unique
+  secondEmail            String               @unique
   doubleCheck            Boolean              @default(false)
   createdAt              DateTime             @default(now())
   updatedAt              DateTime             @updatedAt
@@ -60,7 +61,7 @@ model Newsletter {
 model Article {
   id             Int           @id @default(autoincrement())
   title          String
-  body           String
+  body           String        @db.LongText
   date           DateTime
   isRead         Boolean       @default(false)
   user           User          @relation(fields: [userId], references: [id])
