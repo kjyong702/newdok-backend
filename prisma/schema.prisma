@@ -8,19 +8,20 @@ datasource db {
 }
 
 model User {
-  id               Int                    @id @default(autoincrement())
-  loginId          String                 @unique
-  password         String                 
-  phoneNumber      String                 
-  subscribeEmail   String                 @unique
-  nickname         String
-  birthYear        String
-  gender           String
-  industry         Industry?              @relation(fields: [industryId], references: [id])
-  industryId       Int?
-  interests        InterestsOnUsers[]
-  newsletters      NewslettersOnUsers[]
-  articles         Article[]
+  id                  Int                    @id @default(autoincrement())
+  loginId             String                 @unique
+  password            String                 
+  phoneNumber         String                 
+  subscribeEmail      String                 @unique
+  subscribePassword   String
+  nickname            String
+  birthYear           String
+  gender              String
+  industry            Industry?              @relation(fields: [industryId], references: [id])
+  industryId          Int?
+  interests           InterestsOnUsers[]
+  newsletters         NewslettersOnUsers[]
+  articles            Article[]
 }
 
 model Industry {
@@ -39,7 +40,7 @@ model Interest {
 
 model Newsletter {
   id                     Int                  @id @default(autoincrement())
-  name                   String               @unique
+  brandName              String               @unique
   firstDescription       String
   secondDescription      String
   detailDescription      String
