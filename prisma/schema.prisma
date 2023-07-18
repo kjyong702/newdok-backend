@@ -38,6 +38,12 @@ model Interest {
   newsletters Newsletter[]
 }
 
+model Day {
+  id          Int             @id @default(autoincrement())
+  name        String          @unique
+  newsletters Newsletter[]
+}
+
 model Newsletter {
   id                Int                  @id @default(autoincrement())
   brandName         String               @unique
@@ -57,6 +63,7 @@ model Newsletter {
   articles          Article[]
   industries        Industry[]
   interests         Interest[]
+  days              Day[]
 }
 
 model Article {
@@ -64,7 +71,9 @@ model Article {
   title        String
   body         String     @db.LongText
   date         DateTime
-  isRead       Boolean    @default(false)
+  publishDate  Int
+  publishMonth Int
+  status       Boolean    @default(false)
   user         User       @relation(fields: [userId], references: [id])
   userId       Int
   newsletter   Newsletter @relation(fields: [newsletterId], references: [id])

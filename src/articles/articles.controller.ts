@@ -6,9 +6,9 @@ import { AuthGuard } from '../guards/auth.guard';
 export class ArticlesController {
   constructor(private articlesService: ArticlesService) {}
 
-  @Post('/test1')
+  @Post('/pop3')
   @UseGuards(AuthGuard)
-  async test1(@Req() req: any) {
+  async POP3(@Req() req: any) {
     return this.articlesService.POP3ForUser(req.user.id);
   }
 
