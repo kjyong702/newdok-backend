@@ -106,6 +106,79 @@ export class NewslettersService {
     };
   }
 
+  async getAllNewsletters(
+    orderOpt: string,
+    industries: string[],
+    days: string[],
+  ) {
+    const industryIds = industries.map((industryId) => parseInt(industryId));
+    const dayIds = days.map((dayId) => parseInt(dayId));
+
+    if (orderOpt === '인기순') {
+      const newsletters = await this.prisma.newsletter.findMany({
+        where: {
+          AND: [
+            {
+              industries: {
+                some: {
+                  id: { in: industryIds },
+                },
+              },
+            },
+            {
+              days: {
+                some: {
+                  id: { in: dayIds },
+                },
+              },
+            },
+          ],
+        },
+        orderBy: {
+          users: {
+            _count: 'desc',
+          },
+        },
+        include: {
+          industries: true,
+          interests: true,
+          days: true,
+        },
+      });
+      return newsletters;
+    } else {
+      const newsletters = await this.prisma.newsletter.findMany({
+        where: {
+          AND: [
+            {
+              industries: {
+                some: {
+                  id: { in: industryIds },
+                },
+              },
+            },
+            {
+              days: {
+                some: {
+                  id: { in: dayIds },
+                },
+              },
+            },
+          ],
+        },
+        orderBy: {
+          createdAt: 'asc',
+        },
+        include: {
+          industries: true,
+          interests: true,
+          days: true,
+        },
+      });
+      return newsletters;
+    }
+  }
+
   async getNewslettersByIndustry(id: string) {
     return this.prisma.newsletter.findMany({
       where: {

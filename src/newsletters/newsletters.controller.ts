@@ -1,4 +1,4 @@
-import { Controller, Get, Param, Req, UseGuards } from '@nestjs/common';
+import { Controller, Get, Param, Query, Req, UseGuards } from '@nestjs/common';
 import { NewslettersService } from './newsletters.service';
 import { AuthGuard } from '../guards/auth.guard';
 
@@ -10,6 +10,19 @@ export class NewslettersController {
   @UseGuards(AuthGuard)
   async getRecommendedNewsletters(@Req() req: any) {
     return this.newslettersService.getRecommendedNewsletters(req.user.id);
+  }
+
+  @Get('')
+  async getAllNewsletters(
+    @Query('orderOpt') orderOpt: string,
+    @Query('industry') industries: string[],
+    @Query('day') days: string[],
+  ) {
+    return this.newslettersService.getAllNewsletters(
+      orderOpt,
+      industries,
+      days,
+    );
   }
 
   @Get('/filtered/industry/:id')
