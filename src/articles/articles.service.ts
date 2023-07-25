@@ -45,7 +45,7 @@ export class ArticlesService {
           title: parsedEmail.subject,
           body: parsedEmail.html as string,
           date: parsedEmail.date,
-          publishMonth: new Date(parsedEmail.date).getMonth(),
+          publishMonth: new Date(parsedEmail.date).getMonth() + 1,
           publishDate: new Date(parsedEmail.date).getDate(),
           userId: parseInt(userId),
           newsletterId: newsletter.id,
@@ -71,6 +71,51 @@ export class ArticlesService {
     await pop3.QUIT();
 
     return 'POP3 success';
+  }
+
+  async getArticlesForMonth(publicationMonth: string, userId: number) {
+    const articles = await this.prisma.article.findMany({
+      where: {
+        AND: [
+          {
+            userId,
+          },
+          {
+            publishMonth: parseInt(publicationMonth),
+          },
+        ],
+      },
+      select: {
+        title: true,
+        publishDate: true,
+        status: true,
+        newsletter: {
+          select: {
+            brandName: true,
+            imageUrl: true,
+          },
+        },
+      },
+    });
+
+    const articlesForMonth = [];
+    const articlesForDate = [];
+
+    for (let i = 0; i < 31; i++) {
+      articlesForDate[i] = [];
+    }
+    articles.forEach((article) => {
+      articlesForDate[article.publishDate - 1].push(article);
+    });
+    for (let i = 0; i < 31; i++) {
+      articlesForMonth.push({
+        publishDate: i + 1,
+        receivedUnread: articlesForDate[i].length,
+        receivedArticleList: articlesForDate[i],
+      });
+    }
+
+    return articlesForMonth;
   }
 
   async getArticleById(articleId: string) {
