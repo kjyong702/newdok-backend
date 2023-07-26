@@ -7,9 +7,11 @@ const Pop3Command = require('node-pop3');
 export class ArticlesService {
   constructor(private prisma: PrismaService) {}
 
+  // POP3 프로토콜 로직
   async POP3ForUser(userId: string) {
     const user = await this.prisma.user.findUnique({
       where: { id: parseInt(userId) },
+      include: { articles: true },
     });
 
     const pop3 = new Pop3Command({
@@ -19,7 +21,7 @@ export class ArticlesService {
     });
 
     const emailList = await pop3.UIDL();
-    const numOfArticles = await this.getNumOfArticlesForUser(userId);
+    const numOfArticles = user.articles.length;
 
     // '새롭게' 수신된 POP3 이메일에 대해서만 파싱
     for (let i = numOfArticles + 1; i <= emailList.length; i++) {
@@ -40,10 +42,12 @@ export class ArticlesService {
           },
         });
       }
+
+      const stringifyHTML = parsedEmail.html as string;
       await this.prisma.article.create({
         data: {
           title: parsedEmail.subject,
-          body: parsedEmail.html as string,
+          body: stringifyHTML.replace(/"/g, '"').replace(/\n/g, '\n') as string,
           date: parsedEmail.date,
           publishMonth: new Date(parsedEmail.date).getMonth() + 1,
           publishDate: new Date(parsedEmail.date).getDate(),
@@ -73,6 +77,7 @@ export class ArticlesService {
     return 'POP3 success';
   }
 
+  // 월 단위 수신 아티클 반환
   async getArticlesForMonth(publicationMonth: string, userId: number) {
     const articles = await this.prisma.article.findMany({
       where: {
@@ -118,21 +123,26 @@ export class ArticlesService {
     return articlesForMonth;
   }
 
+  // 아티클 읽기
   async getArticleById(articleId: string) {
-    const article = await this.prisma.article.findUnique({
+    const article = await this.prisma.article.update({
       where: {
         id: parseInt(articleId),
       },
+      data: {
+        status: true,
+      },
       include: { newsletter: true },
     });
-    return article;
-  }
 
-  async getNumOfArticlesForUser(userId: string) {
-    const user = await this.prisma.user.findUnique({
-      where: { id: parseInt(userId) },
-      include: { articles: true },
-    });
-    return user.articles.length;
+    const data = {
+      articleTitle: article.title,
+      articleid: article.id,
+      date: article.date,
+      brandId: article.newsletter.id,
+      brandName: article.newsletter.brandName,
+      articleHTML: article.body,
+    };
+    return data;
   }
 }
