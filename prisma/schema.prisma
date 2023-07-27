@@ -7,30 +7,95 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
-model Newsletter {
-  id                      Int                  @id @default(autoincrement())
-  name                    String               @unique
-  first_description       String
-  second_description      String
-  detail_description      String
-  publication_cycle       String
-  subscribe_url           String               @unique
-  preview_url             String               @unique
-  image_url               String
-  createdAt               DateTime             @default(now())
-  updatedAt               DateTime             @updatedAt
-  industries              Industry[]
-  interests               Interest[]
+model User {
+  id                Int                  @id @default(autoincrement())
+  loginId           String               @unique
+  password          String
+  phoneNumber       String
+  subscribeEmail    String               @unique
+  subscribePassword String
+  nickname          String
+  birthYear         String
+  gender            String
+  industry          Industry?            @relation(fields: [industryId], references: [id])
+  industryId        Int?
+  interests         InterestsOnUsers[]
+  newsletters       NewslettersOnUsers[]
+  articles          Article[]
 }
 
 model Industry {
-  id                 Int                     @id @default(autoincrement())
-  name               String                  @unique
-  newsletters        Newsletter[]
+  id          Int          @id @default(autoincrement())
+  name        String       @unique
+  users       User[]
+  newsletters Newsletter[]
 }
 
 model Interest {
-  id                 Int                    @id @default(autoincrement())
-  name               String                 @unique
-  newsletters        Newsletter[]
+  id          Int                @id @default(autoincrement())
+  name        String             @unique
+  users       InterestsOnUsers[]
+  newsletters Newsletter[]
+}
+
+model Day {
+  id          Int             @id @default(autoincrement())
+  name        String          @unique
+  newsletters Newsletter[]
+}
+
+model Newsletter {
+  id                Int                  @id @default(autoincrement())
+  brandName         String               @unique
+  firstDescription  String
+  secondDescription String
+  detailDescription String
+  publicationCycle  String
+  subscribeUrl      String               @unique
+  previewUrl        String               @unique
+  imageUrl          String
+  brandEmail        String               @unique
+  secondEmail       String               @unique
+  doubleCheck       Boolean              @default(false)
+  createdAt         DateTime             @default(now())
+  updatedAt         DateTime             @updatedAt
+  users             NewslettersOnUsers[]
+  articles          Article[]
+  industries        Industry[]
+  interests         Interest[]
+  days              Day[]
+}
+
+model Article {
+  id           Int        @id @default(autoincrement())
+  title        String
+  body         String     @db.LongText
+  date         DateTime
+  publishDate  Int
+  publishMonth Int
+  status       Boolean    @default(false)
+  user         User       @relation(fields: [userId], references: [id])
+  userId       Int
+  newsletter   Newsletter @relation(fields: [newsletterId], references: [id])
+  newsletterId Int
+}
+
+model InterestsOnUsers {
+  user       User     @relation(fields: [userId], references: [id])
+  userId     Int
+  interest   Interest @relation(fields: [interestId], references: [id])
+  interestId Int
+  createdAt  DateTime @default(now())
+
+  @@id([userId, interestId])
+}
+
+model NewslettersOnUsers {
+  user         User       @relation(fields: [userId], references: [id])
+  userId       Int
+  newsletter   Newsletter @relation(fields: [newsletterId], references: [id])
+  newsletterId Int
+  createdAt    DateTime   @default(now())
+
+  @@id([userId, newsletterId])
 }
