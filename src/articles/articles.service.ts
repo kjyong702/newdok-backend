@@ -91,6 +91,7 @@ export class ArticlesService {
         ],
       },
       select: {
+        id: true,
         title: true,
         publishDate: true,
         status: true,
@@ -110,7 +111,13 @@ export class ArticlesService {
       articlesForDate[i] = [];
     }
     articles.forEach((article) => {
-      articlesForDate[article.publishDate - 1].push(article);
+      articlesForDate[article.publishDate - 1].push({
+        brandName: article.newsletter.brandName,
+        imageUrl: article.newsletter.imageUrl,
+        articleTitle: article.title,
+        articleId: article.id,
+        status: article.status,
+      });
     });
     for (let i = 0; i < 31; i++) {
       articlesForMonth.push({
