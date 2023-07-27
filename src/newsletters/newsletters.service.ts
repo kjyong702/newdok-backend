@@ -164,8 +164,14 @@ export class NewslettersService {
     days: string[],
     userId: number,
   ) {
-    const industryIds = industries.map((industryId) => parseInt(industryId));
-    const dayIds = days.map((dayId) => parseInt(dayId));
+    const industryIds =
+      typeof industries === 'string'
+        ? [parseInt(industries)]
+        : industries.map((industryId) => parseInt(industryId));
+    const dayIds =
+      typeof days === 'string'
+        ? [parseInt(days)]
+        : days.map((dayId) => parseInt(dayId));
 
     // 1. 인기순 정렬 + 구독 중인 뉴스레터
     if (orderOpt === '인기순') {
