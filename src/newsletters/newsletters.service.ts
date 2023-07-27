@@ -354,36 +354,4 @@ export class NewslettersService {
       return newslettersSubscribed.concat(newslettersUnSubscribed);
     }
   }
-
-  async getNewslettersByIndustry(id: string) {
-    return this.prisma.newsletter.findMany({
-      where: {
-        industries: {
-          some: {
-            id: parseInt(id),
-          },
-        },
-      },
-      include: {
-        industries: true,
-        interests: true,
-      },
-    });
-  }
-
-  async getNewslettersByInterest(id: string) {
-    return this.prisma.newsletter.findMany({
-      where: {
-        interests: {
-          some: {
-            id: parseInt(id),
-          },
-        },
-      },
-      include: {
-        industries: true,
-        interests: true,
-      },
-    });
-  }
 }
