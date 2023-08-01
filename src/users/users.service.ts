@@ -59,25 +59,44 @@ export class UsersService {
     return { user, accessToken };
   }
 
-  async getUserByLoginId(loginId: string) {
-    const user = await this.prisma.user.findUnique({
-      where: { loginId },
-    });
-    if (!user) {
-      throw new BadRequestException('가입되지 않은 아이디입니다');
-    } else {
-      throw new BadRequestException('이미 사용중인 아이디입니다');
+  async preInvestigate(
+    industryId: string,
+    interestIds: string[],
+    userId: number,
+  ) {
+    // 1. User - Interest 관계: InterestOnUsers 테이블 데이터 생성
+    for (const id of interestIds) {
+      await this.prisma.interestsOnUsers.createMany({
+        data: [
+          {
+            userId,
+            interestId: parseInt(id),
+          },
+        ],
+      });
     }
-  }
+    // 2. User - Industry 관계
+    await this.prisma.user.update({
+      where: {
+        id: userId,
+      },
+      data: {
+        industry: {
+          connect: {
+            id: parseInt(industryId),
+          },
+        },
+      },
+    });
 
-  async getUsersByPhoneNumber(phoneNumber: string) {
-    const users = await this.prisma.user.findMany({
-      where: { phoneNumber },
-    });
-    if (users.length === 0) {
-      throw new BadRequestException('가입되지 않은 휴대폰 번호입니다');
+    const { intersection, union } =
+      await this.newslettersService.getRecommendedNewsletters(userId);
+
+    if (intersection.length >= 6) {
+      return intersection.slice(0, 6);
+    } else {
+      return intersection.concat(union).slice(0, 6);
     }
-    return users;
   }
 
   async sendSMS(phoneNumber: string) {
@@ -157,56 +176,107 @@ export class UsersService {
     }
   }
 
-  async resetPassword(loginId: string, newPassword: string) {
-    const newHashedPassword = await bcrypt.hash(newPassword, 10);
-
-    const updatedUser = await this.prisma.user.update({
+  async getUserByLoginId(loginId: string) {
+    const user = await this.prisma.user.findUnique({
       where: { loginId },
+    });
+    if (!user) {
+      throw new BadRequestException('가입되지 않은 아이디입니다');
+    }
+
+    return user;
+  }
+
+  async getUsersByPhoneNumber(phoneNumber: string) {
+    const users = await this.prisma.user.findMany({
+      where: { phoneNumber },
+    });
+    if (users.length === 0) {
+      throw new BadRequestException('가입되지 않은 휴대폰 번호입니다');
+    }
+    return users;
+  }
+
+  async changeNickname(newNickname: string, userId: number) {
+    const updatedUser = await this.prisma.user.update({
+      where: {
+        id: userId,
+      },
       data: {
-        password: newHashedPassword,
+        nickname: newNickname,
       },
     });
 
     return updatedUser;
   }
 
-  async preInvestigate(
-    userId: number,
-    industryId: string,
-    interestIds: string[],
-  ) {
-    // 1. User - Interest 관계: InterestOnUsers 테이블 데이터 생성
-    for (const id of interestIds) {
-      await this.prisma.interestsOnUsers.createMany({
-        data: [
-          {
-            userId,
-            interestId: parseInt(id),
-          },
-        ],
-      });
-    }
-    // 2. User - Industry 관계
-    await this.prisma.user.update({
+  async changeIndustry(newIndustryId: number, userId: number) {
+    const updatedUser = await this.prisma.user.update({
       where: {
         id: userId,
       },
       data: {
         industry: {
           connect: {
-            id: parseInt(industryId),
+            id: newIndustryId,
           },
         },
       },
     });
 
-    const { intersection, union } =
-      await this.newslettersService.getRecommendedNewsletters(userId);
+    return updatedUser;
+  }
 
-    if (intersection.length >= 6) {
-      return intersection.slice(0, 6);
-    } else {
-      return intersection.concat(union).slice(0, 6);
+  async changeInterest(newInterestIds: number[], userId: number) {
+    // 1. 유저 관심사 일괄 삭제
+    await this.prisma.interestsOnUsers.deleteMany({
+      where: {
+        userId,
+      },
+    });
+    // 2. 유저 관심사 각각 재생성
+    for (const newInterestId of newInterestIds) {
+      await this.prisma.interestsOnUsers.create({
+        data: {
+          userId,
+          interestId: newInterestId,
+        },
+      });
     }
+    const updatedUser = await this.prisma.user.findUnique({
+      where: {
+        id: userId,
+      },
+    });
+
+    return updatedUser;
+  }
+
+  async changePhoneNumber(newPhoneNumber: string, userId: number) {
+    const updatedUser = await this.prisma.user.update({
+      where: {
+        id: userId,
+      },
+      data: {
+        phoneNumber: newPhoneNumber,
+      },
+    });
+
+    return updatedUser;
+  }
+
+  async resetPassword(loginId: string, newPassword: string) {
+    const newHashedPassword = await bcrypt.hash(newPassword, 10);
+
+    const updatedUser = await this.prisma.user.update({
+      where: {
+        loginId,
+      },
+      data: {
+        password: newHashedPassword,
+      },
+    });
+
+    return updatedUser;
   }
 }

@@ -51,6 +51,7 @@ export class NewslettersService {
         imageUrl: true,
         createdAt: true,
         updatedAt: true,
+        industries: true,
         interests: true,
       },
     });
@@ -86,10 +87,13 @@ export class NewslettersService {
       },
     });
     const ids2 = union2.map((newsletter) => newsletter.id);
+    const intersectionIds = intersection.map((newsletter) => newsletter.id);
 
     const unionIds = ids1.concat(ids2);
     const set = new Set(unionIds);
-    const uniqueUnionIds = [...set];
+    const uniqueUnionIds = [...set].filter(
+      (unionId) => !intersectionIds.includes(unionId),
+    );
 
     const union = await this.prisma.newsletter.findMany({
       where: {
@@ -104,6 +108,7 @@ export class NewslettersService {
         imageUrl: true,
         createdAt: true,
         updatedAt: true,
+        industries: true,
         interests: true,
       },
     });
