@@ -182,9 +182,9 @@ export class UsersService {
     });
     if (!user) {
       throw new BadRequestException('가입되지 않은 아이디입니다');
-    } else {
-      throw new BadRequestException('이미 사용중인 아이디입니다');
     }
+
+    return user;
   }
 
   async getUsersByPhoneNumber(phoneNumber: string) {
@@ -265,12 +265,12 @@ export class UsersService {
     return updatedUser;
   }
 
-  async resetPassword(newPassword: string, userId: number) {
+  async resetPassword(loginId: string, newPassword: string) {
     const newHashedPassword = await bcrypt.hash(newPassword, 10);
 
     const updatedUser = await this.prisma.user.update({
       where: {
-        id: userId,
+        loginId,
       },
       data: {
         password: newHashedPassword,

@@ -105,7 +105,7 @@ export class UsersController {
   })
   @ApiQuery({
     name: 'phoneNumber',
-    description: '사용자 전화번호',
+    description: '휴대폰 번호',
     example: '01055039184',
   })
   @Get('/check/phoneNumber')
@@ -182,18 +182,20 @@ export class UsersController {
     return this.usersService.changePhoneNumber(phoneNumber, req.user.id);
   }
 
-  @ApiOperation({ summary: '비밀번호 초기화' })
+  @ApiOperation({ summary: '비밀번호 재설정' })
   @ApiBody({
     schema: {
       properties: {
-        loginId: { type: 'string', example: 'kjyong702' },
+        loginId: { type: 'string', example: 'newdok' },
         password: { type: 'string', example: '@def5678' },
       },
     },
   })
-  @UseGuards(AuthGuard)
   @Patch('mypage/password')
-  async resetPassword(@Body('password') password: string, @Req() req: any) {
-    return this.usersService.resetPassword(password, req.user.id);
+  async resetPassword(
+    @Body('loginId') loginId: string,
+    @Body('password') password: string,
+  ) {
+    return this.usersService.resetPassword(loginId, password);
   }
 }
