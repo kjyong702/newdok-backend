@@ -17,6 +17,8 @@ model User {
   nickname          String
   birthYear         String
   gender            String
+  emailIndex        String               
+  createdAt         DateTime             @default(now())
   industry          Industry?            @relation(fields: [industryId], references: [id])
   industryId        Int?
   interests         InterestsOnUsers[]
@@ -39,8 +41,8 @@ model Interest {
 }
 
 model Day {
-  id          Int             @id @default(autoincrement())
-  name        String          @unique
+  id          Int          @id @default(autoincrement())
+  name        String       @unique
   newsletters Newsletter[]
 }
 

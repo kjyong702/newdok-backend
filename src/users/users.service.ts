@@ -17,22 +17,25 @@ export class UsersService {
   async signup(createUserDto: CreateUserDto) {
     const { loginId, password, phoneNumber, nickname, birthYear, gender } =
       createUserDto;
-    const subscribeEmail = 'test@newdok.site'; // 추후 이메일 자동부여 기능 구현
-    const subscribedPassword = '!Kktest';
 
-    const hashedPassword = await bcrypt.hash(password, 10);
-    const hashedSubscribedPassword = await bcrypt.hash(subscribedPassword, 10);
+    const userList = await this.prisma.user.findMany();
+
+    const emailIndex = parseInt(userList[userList.length - 1].emailIndex) + 1;
+    const subscribeEmail = `newdok${emailIndex}@newdok.site`;
+    const subscribePassword = `!Kknewdok${emailIndex}`;
+    const hashedLoginPassword = await bcrypt.hash(password, 10);
 
     const user = await this.prisma.user.create({
       data: {
         loginId,
-        password: hashedPassword,
+        password: hashedLoginPassword,
         phoneNumber,
         subscribeEmail,
-        subscribePassword: hashedSubscribedPassword,
+        subscribePassword,
         nickname,
         birthYear,
         gender,
+        emailIndex: `${emailIndex}`,
       },
     });
     const accessToken = await this.jwtService.signAsync({ id: user.id });
