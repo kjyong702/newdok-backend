@@ -97,6 +97,7 @@ model NewslettersOnUsers {
   userId       Int
   newsletter   Newsletter @relation(fields: [newsletterId], references: [id])
   newsletterId Int
+  status       String
   createdAt    DateTime   @default(now())
 
   @@id([userId, newsletterId])
