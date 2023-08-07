@@ -55,6 +55,7 @@ export class ArticlesService {
           newsletterId: newsletter.id,
         },
       });
+      // 수신한 아티클 뉴스레터 구독 여부 판단
       const isSubscribed = await this.prisma.newslettersOnUsers.findUnique({
         where: {
           userId_newsletterId: {
@@ -63,11 +64,27 @@ export class ArticlesService {
           },
         },
       });
+      // 1. "구독 전" 뉴스레터인 경우
       if (!isSubscribed) {
         await this.prisma.newslettersOnUsers.create({
           data: {
             userId: parseInt(userId),
             newsletterId: newsletter.id,
+            status: newsletter.doubleCheck === true ? 'CHECK' : 'CONFIRMED',
+          },
+        });
+      }
+      // 2. "구독 확인중" 뉴스레터인 경우
+      if (isSubscribed && isSubscribed.status === 'CHECK') {
+        await this.prisma.newslettersOnUsers.update({
+          where: {
+            userId_newsletterId: {
+              userId: parseInt(userId),
+              newsletterId: newsletter.id,
+            },
+          },
+          data: {
+            status: 'CONFIRMED',
           },
         });
       }
