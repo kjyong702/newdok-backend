@@ -113,6 +113,13 @@ export class UsersController {
     return this.usersService.getUsersByPhoneNumber(phoneNumber);
   }
 
+  @ApiOperation({ summary: '구독 리스트 보기' })
+  @UseGuards(AuthGuard)
+  @Get('mypage/subscription')
+  async getSubscriptionListOfUser(@Req() req: any) {
+    return this.usersService.getSubscriptionListOfUser(req.user.id);
+  }
+
   @ApiOperation({ summary: '구독 닉네임 변경' })
   @ApiBody({
     schema: {

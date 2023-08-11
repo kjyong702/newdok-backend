@@ -200,6 +200,37 @@ export class UsersService {
     return users;
   }
 
+  async getSubscriptionListOfUser(userId: number) {
+    // const subscriptionList = await this.prisma.newslettersOnUsers.findMany({
+    //   where: {
+    //     AND: [
+    //       {
+    //         userId,
+    //       },
+    //       {
+    //         status: 'CONFIRMED',
+    //       },
+    //     ],
+    //   },
+    // });
+    const subscribedNewsletters = await this.prisma.newsletter.findMany({
+      where: {
+        users: {
+          some: {
+            userId,
+          },
+        },
+      },
+      select: {
+        id: true,
+        brandName: true,
+        imageUrl: true,
+        publicationCycle: true,
+      },
+    });
+
+    return subscribedNewsletters;
+  }
   async changeNickname(newNickname: string, userId: number) {
     const updatedUser = await this.prisma.user.update({
       where: {
