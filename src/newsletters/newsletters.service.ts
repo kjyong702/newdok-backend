@@ -154,6 +154,7 @@ export class NewslettersService {
       detailDescription: newsletter.detailDescription,
       interests: newsletter.interests,
       publicationCycle: newsletter.publicationCycle,
+      subscribeUrl: newsletter.subscribeUrl,
       imageUrl: newsletter.imageUrl,
       brandArticleList: newsletter.articles,
       isSubscribed: isSubscribed ? 'CONFIRMED' : 'INITIAL',

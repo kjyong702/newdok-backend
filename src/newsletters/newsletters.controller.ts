@@ -8,7 +8,9 @@ import { ApiTags, ApiOperation, ApiQuery, ApiParam } from '@nestjs/swagger';
 export class NewslettersController {
   constructor(private newslettersService: NewslettersService) {}
 
-  @ApiOperation({ summary: '개인화 추천 뉴스레터' })
+  @ApiOperation({
+    summary: '개인화 추천 뉴스레터',
+  })
   @Get('/recommend')
   @UseGuards(AuthGuard)
   async getRecommendedNewsletters(@Req() req: any) {
