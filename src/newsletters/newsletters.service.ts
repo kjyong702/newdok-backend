@@ -170,14 +170,25 @@ export class NewslettersService {
     days: string[],
     userId: number,
   ) {
-    const industryIds =
-      typeof industries === 'string'
-        ? [parseInt(industries)]
-        : industries.map((industryId) => parseInt(industryId));
-    const dayIds =
-      typeof days === 'string'
-        ? [parseInt(days)]
-        : days.map((dayId) => parseInt(dayId));
+    let industryIds: number[];
+    let dayIds: number[];
+
+    if (!industries) {
+      industryIds = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16];
+    } else {
+      industryIds =
+        typeof industries === 'string'
+          ? [parseInt(industries)]
+          : industries.map((industryId) => parseInt(industryId));
+    }
+    if (!days) {
+      dayIds = [1, 2, 3, 4, 5, 6, 7, 8];
+    } else {
+      dayIds =
+        typeof days === 'string'
+          ? [parseInt(days)]
+          : days.map((dayId) => parseInt(dayId));
+    }
 
     // 1. 인기순 정렬 + 구독 중인 뉴스레터
     if (orderOpt === '인기순') {
