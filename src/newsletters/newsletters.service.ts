@@ -154,9 +154,47 @@ export class NewslettersService {
       detailDescription: newsletter.detailDescription,
       interests: newsletter.interests,
       publicationCycle: newsletter.publicationCycle,
+      subscribeUrl: newsletter.subscribeUrl,
       imageUrl: newsletter.imageUrl,
       brandArticleList: newsletter.articles,
-      isSubscribed: isSubscribed ? 'CONFIRMED' : 'INITIAL',
+      isSubscribed: !isSubscribed
+        ? 'INITIAL'
+        : isSubscribed.status === 'CONFIRMED'
+        ? 'CONFIRMED'
+        : 'CHECK',
+      subscribeCheck: newsletter.doubleCheck,
+    };
+
+    return data;
+  }
+
+  async getNewsletterByIdForNonMember(brandId: string) {
+    const newsletter = await this.prisma.newsletter.findUnique({
+      where: {
+        id: parseInt(brandId),
+      },
+      include: {
+        articles: {
+          take: 5,
+          distinct: ['title'],
+          select: {
+            id: true,
+            title: true,
+            date: true,
+          },
+        },
+        interests: true,
+      },
+    });
+    const data = {
+      brandId: newsletter.id,
+      brandName: newsletter.brandName,
+      detailDescription: newsletter.detailDescription,
+      interests: newsletter.interests,
+      publicationCycle: newsletter.publicationCycle,
+      subscribeUrl: newsletter.subscribeUrl,
+      imageUrl: newsletter.imageUrl,
+      brandArticleList: newsletter.articles,
       subscribeCheck: newsletter.doubleCheck,
     };
 
@@ -169,14 +207,25 @@ export class NewslettersService {
     days: string[],
     userId: number,
   ) {
-    const industryIds =
-      typeof industries === 'string'
-        ? [parseInt(industries)]
-        : industries.map((industryId) => parseInt(industryId));
-    const dayIds =
-      typeof days === 'string'
-        ? [parseInt(days)]
-        : days.map((dayId) => parseInt(dayId));
+    let industryIds: number[];
+    let dayIds: number[];
+
+    if (!industries) {
+      industryIds = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16];
+    } else {
+      industryIds =
+        typeof industries === 'string'
+          ? [parseInt(industries)]
+          : industries.map((industryId) => parseInt(industryId));
+    }
+    if (!days) {
+      dayIds = [1, 2, 3, 4, 5, 6, 7, 8];
+    } else {
+      dayIds =
+        typeof days === 'string'
+          ? [parseInt(days)]
+          : days.map((dayId) => parseInt(dayId));
+    }
 
     // 1. 인기순 정렬 + 구독 중인 뉴스레터
     if (orderOpt === '인기순') {
@@ -251,7 +300,6 @@ export class NewslettersService {
           interests: true,
         },
       });
-
       const newslettersUnSubscribed = [];
       arr2.forEach((newsletter) => {
         newslettersUnSubscribed.push({
@@ -357,6 +405,113 @@ export class NewslettersService {
       });
 
       return newslettersSubscribed.concat(newslettersUnSubscribed);
+    }
+  }
+
+  async getAllNewslettersForNonMember(
+    orderOpt: string,
+    industries: string[],
+    days: string[],
+  ) {
+    let industryIds: number[];
+    let dayIds: number[];
+
+    if (!industries) {
+      industryIds = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16];
+    } else {
+      industryIds =
+        typeof industries === 'string'
+          ? [parseInt(industries)]
+          : industries.map((industryId) => parseInt(industryId));
+    }
+    if (!days) {
+      dayIds = [1, 2, 3, 4, 5, 6, 7, 8];
+    } else {
+      dayIds =
+        typeof days === 'string'
+          ? [parseInt(days)]
+          : days.map((dayId) => parseInt(dayId));
+    }
+
+    // 1. 인기순 정렬
+    if (orderOpt === '인기순') {
+      const newsletters = await this.prisma.newsletter.findMany({
+        where: {
+          AND: [
+            {
+              industries: {
+                some: { id: { in: industryIds } },
+              },
+            },
+            {
+              days: {
+                some: { id: { in: dayIds } },
+              },
+            },
+          ],
+        },
+        orderBy: {
+          users: {
+            _count: 'desc',
+          },
+        },
+        include: {
+          interests: true,
+        },
+      });
+
+      const data = [];
+      newsletters.forEach((newsletter) => {
+        data.push({
+          brandId: newsletter.id,
+          brandName: newsletter.brandName,
+          imageUrl: newsletter.imageUrl,
+          interest: newsletter.interests,
+          shortDescription: newsletter.secondDescription,
+        });
+      });
+      return data;
+    }
+    // 2. 최신순 정렬
+    else {
+      const newsletters = await this.prisma.newsletter.findMany({
+        where: {
+          AND: [
+            {
+              industries: {
+                some: {
+                  id: { in: industryIds },
+                },
+              },
+            },
+            {
+              days: {
+                some: {
+                  id: { in: dayIds },
+                },
+              },
+            },
+          ],
+        },
+        orderBy: {
+          createdAt: 'asc',
+        },
+        include: {
+          interests: true,
+        },
+      });
+
+      const data = [];
+      newsletters.forEach((newsletter) => {
+        data.push({
+          brandId: newsletter.id,
+          brandName: newsletter.brandName,
+          imageUrl: newsletter.imageUrl,
+          interest: newsletter.interests,
+          shortDescription: newsletter.secondDescription,
+        });
+      });
+      return data;
     }
   }
 }
