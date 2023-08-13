@@ -157,7 +157,11 @@ export class NewslettersService {
       subscribeUrl: newsletter.subscribeUrl,
       imageUrl: newsletter.imageUrl,
       brandArticleList: newsletter.articles,
-      isSubscribed: isSubscribed ? 'CONFIRMED' : 'INITIAL',
+      isSubscribed: !isSubscribed
+        ? 'INITIAL'
+        : isSubscribed.status === 'CONFIRMED'
+        ? 'CONFIRMED'
+        : 'CHECK',
       subscribeCheck: newsletter.doubleCheck,
     };
 
@@ -296,7 +300,6 @@ export class NewslettersService {
           interests: true,
         },
       });
-
       const newslettersUnSubscribed = [];
       arr2.forEach((newsletter) => {
         newslettersUnSubscribed.push({
