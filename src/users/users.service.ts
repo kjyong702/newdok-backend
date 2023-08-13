@@ -201,18 +201,6 @@ export class UsersService {
   }
 
   async getSubscriptionListOfUser(userId: number) {
-    // const subscriptionList = await this.prisma.newslettersOnUsers.findMany({
-    //   where: {
-    //     AND: [
-    //       {
-    //         userId,
-    //       },
-    //       {
-    //         status: 'CONFIRMED',
-    //       },
-    //     ],
-    //   },
-    // });
     const subscribedNewsletters = await this.prisma.newsletter.findMany({
       where: {
         users: {
