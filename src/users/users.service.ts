@@ -46,6 +46,9 @@ export class UsersService {
   async login(loginId: string, password: string) {
     const user = await this.prisma.user.findUnique({
       where: { loginId },
+      include: {
+        interests: true,
+      },
     });
     if (!user) {
       throw new BadRequestException(

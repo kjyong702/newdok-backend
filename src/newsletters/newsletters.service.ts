@@ -265,7 +265,7 @@ export class NewslettersService {
           brandId: newsletter.id,
           brandName: newsletter.brandName,
           imageUrl: newsletter.imageUrl,
-          interest: newsletter.interests,
+          interests: newsletter.interests,
           isSubscribed: 'CONFIRMED',
           shortDescription: newsletter.secondDescription,
         });
@@ -306,7 +306,7 @@ export class NewslettersService {
           brandId: newsletter.id,
           brandName: newsletter.brandName,
           imageUrl: newsletter.imageUrl,
-          interest: newsletter.interests,
+          interests: newsletter.interests,
           isSubscribed: 'INITIAL',
           shortDescription: newsletter.secondDescription,
         });
@@ -353,7 +353,7 @@ export class NewslettersService {
           brandId: newsletter.id,
           brandName: newsletter.brandName,
           imageUrl: newsletter.imageUrl,
-          interest: newsletter.interests,
+          interests: newsletter.interests,
           isSubscribed: 'CONFIRMED',
           shortDescription: newsletter.secondDescription,
         });
@@ -398,7 +398,7 @@ export class NewslettersService {
           brandId: newsletter.id,
           brandName: newsletter.brandName,
           imageUrl: newsletter.imageUrl,
-          interest: newsletter.interests,
+          interests: newsletter.interests,
           isSubscribed: 'INITIAL',
           shortDescription: newsletter.secondDescription,
         });
@@ -466,7 +466,7 @@ export class NewslettersService {
           brandId: newsletter.id,
           brandName: newsletter.brandName,
           imageUrl: newsletter.imageUrl,
-          interest: newsletter.interests,
+          interests: newsletter.interests,
           shortDescription: newsletter.secondDescription,
         });
       });
@@ -507,7 +507,7 @@ export class NewslettersService {
           brandId: newsletter.id,
           brandName: newsletter.brandName,
           imageUrl: newsletter.imageUrl,
-          interest: newsletter.interests,
+          interests: newsletter.interests,
           shortDescription: newsletter.secondDescription,
         });
       });
