@@ -1,7 +1,7 @@
 import {
   Controller,
   Get,
-  Post,
+  Delete,
   Query,
   Param,
   Req,
@@ -15,16 +15,6 @@ import { ApiTags, ApiOperation, ApiQuery, ApiParam } from '@nestjs/swagger';
 @Controller('articles')
 export class ArticlesController {
   constructor(private articlesService: ArticlesService) {}
-
-  @ApiOperation({
-    summary: 'POP3',
-    description: '백엔드 자체 로직으로 end point에서 제외 예정입니다!',
-  })
-  @Post('/pop3')
-  @UseGuards(AuthGuard)
-  async POP3(@Req() req: any) {
-    return this.articlesService.POP3ForUser(req.user.id);
-  }
 
   @ApiQuery({
     name: 'publicationMonth',
@@ -53,5 +43,22 @@ export class ArticlesController {
   @Get('/:id')
   async getArticleById(@Param('id') id: string) {
     return this.articlesService.getArticleById(id);
+  }
+
+  @ApiParam({
+    name: 'id',
+    description: '아티클 id',
+    example: 1,
+  })
+  @ApiOperation({ summary: '아티클 삭제' })
+  @Delete('/:id')
+  async deleteArticleById(@Param('id') id: string) {
+    return this.articlesService.deleteArticleById(id);
+  }
+
+  @ApiOperation({ summary: '아티클 전체 삭제' })
+  @Delete('')
+  async deleteArticles() {
+    return this.articlesService.deleteArticles();
   }
 }
