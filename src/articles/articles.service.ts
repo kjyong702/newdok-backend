@@ -169,4 +169,15 @@ export class ArticlesService {
     };
     return data;
   }
+
+  // 아티클 삭제
+  async deleteArticleById(articleId: string) {
+    const deletedArticle = await this.prisma.article.delete({
+      where: {
+        id: parseInt(articleId),
+      },
+    });
+
+    return deletedArticle;
+  }
 }

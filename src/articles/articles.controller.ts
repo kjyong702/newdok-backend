@@ -2,6 +2,7 @@ import {
   Controller,
   Get,
   Post,
+  Delete,
   Query,
   Param,
   Req,
@@ -53,5 +54,16 @@ export class ArticlesController {
   @Get('/:id')
   async getArticleById(@Param('id') id: string) {
     return this.articlesService.getArticleById(id);
+  }
+
+  @ApiParam({
+    name: 'id',
+    description: '아티클 id',
+    example: 1,
+  })
+  @ApiOperation({ summary: '아티클 삭제' })
+  @Delete('/:id')
+  async deleteArticleById(@Param('id') id: string) {
+    return this.articlesService.deleteArticleById(id);
   }
 }
