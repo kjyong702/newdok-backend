@@ -1,7 +1,7 @@
 import { Injectable } from '@nestjs/common';
 import { PrismaService } from '../prisma.service';
 import { simpleParser } from 'mailparser';
-import { Cron, CronExpression } from '@nestjs/schedule';
+import { Cron } from '@nestjs/schedule';
 const Pop3Command = require('node-pop3');
 
 @Injectable()
@@ -9,7 +9,7 @@ export class ArticlesService {
   constructor(private prisma: PrismaService) {}
 
   // POP3 프로토콜 로직
-  @Cron(CronExpression.EVERY_30_MINUTES)
+  @Cron('0 */1 * * * *')
   async POP3() {
     const allUser = await this.prisma.user.findMany({
       include: {
@@ -157,7 +157,7 @@ export class ArticlesService {
         id: parseInt(articleId),
       },
       data: {
-        status: true,
+        status: 'Read',
       },
       include: { newsletter: true },
     });
