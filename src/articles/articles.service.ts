@@ -157,7 +157,7 @@ export class ArticlesService {
         id: parseInt(articleId),
       },
       data: {
-        status: true,
+        status: 'Read',
       },
       include: { newsletter: true },
     });

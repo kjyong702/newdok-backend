@@ -75,7 +75,7 @@ model Article {
   date         DateTime
   publishDate  Int
   publishMonth Int
-  status       Boolean    @default(false)
+  status       String     @default("Unread")
   user         User       @relation(fields: [userId], references: [id])
   userId       Int
   newsletter   Newsletter @relation(fields: [newsletterId], references: [id])
