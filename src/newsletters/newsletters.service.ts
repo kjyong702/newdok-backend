@@ -122,14 +122,18 @@ export class NewslettersService {
   }
 
   async getNewsletterById(brandId: string, userId: number) {
+    const userIdOfDatabase = 27;
+
     const newsletter = await this.prisma.newsletter.findUnique({
       where: {
         id: parseInt(brandId),
       },
       include: {
         articles: {
+          where: {
+            userId: userIdOfDatabase,
+          },
           take: 5,
-          distinct: ['title'],
           select: {
             id: true,
             title: true,
@@ -172,14 +176,18 @@ export class NewslettersService {
   }
 
   async getNewsletterByIdForNonMember(brandId: string) {
+    const userIdOfDatabase = 27;
+
     const newsletter = await this.prisma.newsletter.findUnique({
       where: {
         id: parseInt(brandId),
       },
       include: {
         articles: {
+          where: {
+            userId: userIdOfDatabase,
+          },
           take: 5,
-          distinct: ['title'],
           select: {
             id: true,
             title: true,
