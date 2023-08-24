@@ -9,7 +9,7 @@ export class ArticlesService {
   constructor(private prisma: PrismaService) {}
 
   // POP3 프로토콜 로직
-  @Cron('0 */1 * * * *')
+  @Cron('0 */2 * * * *')
   async POP3() {
     const allUser = await this.prisma.user.findMany({
       include: {
