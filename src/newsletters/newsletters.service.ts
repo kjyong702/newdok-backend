@@ -135,6 +135,9 @@ export class NewslettersService {
             title: true,
             date: true,
           },
+          orderBy: {
+            date: 'asc',
+          },
         },
         interests: true,
       },
