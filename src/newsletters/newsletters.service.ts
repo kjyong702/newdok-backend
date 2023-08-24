@@ -140,7 +140,7 @@ export class NewslettersService {
             date: true,
           },
           orderBy: {
-            date: 'asc',
+            date: 'desc',
           },
         },
         interests: true,
@@ -192,6 +192,9 @@ export class NewslettersService {
             id: true,
             title: true,
             date: true,
+          },
+          orderBy: {
+            date: 'desc',
           },
         },
         interests: true,
