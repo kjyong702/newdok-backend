@@ -126,9 +126,11 @@ export class ArticlesService {
 
     const articlesForMonth = [];
     const articlesForDate = [];
+    const numOfUnReadArticlesForDate = [];
 
     for (let i = 0; i < 31; i++) {
       articlesForDate[i] = [];
+      numOfUnReadArticlesForDate[i] = 0;
     }
     articles.forEach((article) => {
       articlesForDate[article.publishDate - 1].push({
@@ -138,11 +140,13 @@ export class ArticlesService {
         articleId: article.id,
         status: article.status,
       });
+      if (article.status === 'Unread')
+        numOfUnReadArticlesForDate[article.publishDate - 1]++;
     });
     for (let i = 0; i < 31; i++) {
       articlesForMonth.push({
         publishDate: i + 1,
-        receivedUnread: articlesForDate[i].length,
+        receivedUnread: numOfUnReadArticlesForDate[i],
         receivedArticleList: articlesForDate[i],
       });
     }
