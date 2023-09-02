@@ -207,9 +207,7 @@ export class UsersService {
     const subscribedNewsletters = await this.prisma.newsletter.findMany({
       where: {
         users: {
-          some: {
-            userId,
-          },
+          some: { AND: [{ userId }, { status: 'CONFIRMED' }] },
         },
       },
       select: {
