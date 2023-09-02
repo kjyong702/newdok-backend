@@ -194,4 +194,20 @@ export class ArticlesService {
 
     return deletedArticles;
   }
+
+  // 유저의 총 수신 아티클 개수
+  async calNumOfReceivedArticles(userId: number) {
+    const user = await this.prisma.user.findUnique({
+      where: {
+        id: userId,
+      },
+      include: {
+        _count: {
+          select: { articles: true },
+        },
+      },
+    });
+
+    return user._count.articles;
+  }
 }
