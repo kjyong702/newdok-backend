@@ -270,6 +270,9 @@ export class UsersService {
       where: {
         id: userId,
       },
+      include: {
+        interests: true,
+      },
     });
 
     return updatedUser;
