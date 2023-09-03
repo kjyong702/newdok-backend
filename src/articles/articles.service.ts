@@ -126,9 +126,11 @@ export class ArticlesService {
 
     const articlesForMonth = [];
     const articlesForDate = [];
+    const numOfUnReadArticlesForDate = [];
 
     for (let i = 0; i < 31; i++) {
       articlesForDate[i] = [];
+      numOfUnReadArticlesForDate[i] = 0;
     }
     articles.forEach((article) => {
       articlesForDate[article.publishDate - 1].push({
@@ -138,11 +140,13 @@ export class ArticlesService {
         articleId: article.id,
         status: article.status,
       });
+      if (article.status === 'Unread')
+        numOfUnReadArticlesForDate[article.publishDate - 1]++;
     });
     for (let i = 0; i < 31; i++) {
       articlesForMonth.push({
         publishDate: i + 1,
-        receivedUnread: articlesForDate[i].length,
+        receivedUnread: numOfUnReadArticlesForDate[i],
         receivedArticleList: articlesForDate[i],
       });
     }
@@ -189,5 +193,21 @@ export class ArticlesService {
     const deletedArticles = await this.prisma.article.deleteMany();
 
     return deletedArticles;
+  }
+
+  // 유저의 총 수신 아티클 개수
+  async calNumOfReceivedArticles(userId: number) {
+    const user = await this.prisma.user.findUnique({
+      where: {
+        id: userId,
+      },
+      include: {
+        _count: {
+          select: { articles: true },
+        },
+      },
+    });
+
+    return user._count.articles;
   }
 }

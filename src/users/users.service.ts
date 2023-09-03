@@ -207,9 +207,7 @@ export class UsersService {
     const subscribedNewsletters = await this.prisma.newsletter.findMany({
       where: {
         users: {
-          some: {
-            userId,
-          },
+          some: { AND: [{ userId }, { status: 'CONFIRMED' }] },
         },
       },
       select: {
@@ -271,6 +269,9 @@ export class UsersService {
     const updatedUser = await this.prisma.user.findUnique({
       where: {
         id: userId,
+      },
+      include: {
+        interests: true,
       },
     });
 
