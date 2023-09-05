@@ -45,6 +45,7 @@ export class ArticlesService {
             },
           });
         }
+        const utcDate = new Date(parsedEmail.date);
         const stringifyHTML = parsedEmail.html as string;
         await this.prisma.article.create({
           data: {
@@ -52,9 +53,9 @@ export class ArticlesService {
             body: stringifyHTML
               .replace(/"/g, '"')
               .replace(/\n/g, '\n') as string,
-            date: parsedEmail.date,
-            publishMonth: new Date(parsedEmail.date).getMonth() + 1,
-            publishDate: new Date(parsedEmail.date).getDate(),
+            date: utcDate,
+            publishMonth: utcDate.getMonth() + 1,
+            publishDate: utcDate.getDate(),
             userId: user.id,
             newsletterId: newsletter.id,
           },
