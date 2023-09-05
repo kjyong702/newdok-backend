@@ -82,7 +82,7 @@ export class UsersService {
       });
     }
     // 2. User - Industry 관계
-    await this.prisma.user.update({
+    const updatedUser = await this.prisma.user.update({
       where: {
         id: userId,
       },
@@ -93,15 +93,21 @@ export class UsersService {
           },
         },
       },
+      include: {
+        interests: true,
+      },
     });
 
     const { intersection, union } =
       await this.newslettersService.getRecommendedNewsletters(userId);
 
     if (intersection.length >= 6) {
-      return intersection.slice(0, 6);
+      return { user: updatedUser, data: intersection.slice(0, 6) };
     } else {
-      return intersection.concat(union).slice(0, 6);
+      return {
+        user: updatedUser,
+        data: intersection.concat(union).slice(0, 6),
+      };
     }
   }
 
