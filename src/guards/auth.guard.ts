@@ -1,4 +1,5 @@
 import {
+  BadRequestException,
   CanActivate,
   ExecutionContext,
   Injectable,
@@ -15,7 +16,7 @@ export class AuthGuard implements CanActivate {
 
     const accessToken = request.headers.authorization?.split('Bearer ')[1];
     if (!accessToken) {
-      throw new UnauthorizedException();
+      throw new BadRequestException();
     }
     try {
       const payload = await this.jwtService.verifyAsync(accessToken, {
