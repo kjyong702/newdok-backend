@@ -297,7 +297,23 @@ export class UsersService {
     return updatedUser;
   }
 
-  async resetPassword(loginId: string, newPassword: string) {
+  async resetPassword(
+    loginId: string,
+    prevPassword: string,
+    newPassword: string,
+  ) {
+    // 기존 비밀번호가 있으면 마이페이지-비밀번호 변경으로 처리
+    if (prevPassword) {
+      const user = await this.prisma.user.findUnique({
+        where: {
+          loginId,
+        },
+      });
+      const isValid = await bcrypt.compare(prevPassword, user.password);
+      if (!isValid) {
+        throw new BadRequestException('현재 비밀번호가 일치하지 않습니다');
+      }
+    }
     const newHashedPassword = await bcrypt.hash(newPassword, 10);
 
     const updatedUser = await this.prisma.user.update({

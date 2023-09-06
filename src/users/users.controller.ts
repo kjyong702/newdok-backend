@@ -200,6 +200,7 @@ export class UsersController {
     schema: {
       properties: {
         loginId: { type: 'string', example: 'newdok' },
+        prevPassword: { type: 'string', example: 'assdfsd1@s2' },
         password: { type: 'string', example: '@def5678' },
       },
     },
@@ -207,8 +208,9 @@ export class UsersController {
   @Patch('mypage/password')
   async resetPassword(
     @Body('loginId') loginId: string,
+    @Body('prevPassword') prevPassword: string,
     @Body('password') password: string,
   ) {
-    return this.usersService.resetPassword(loginId, password);
+    return this.usersService.resetPassword(loginId, prevPassword, password);
   }
 }
