@@ -15,6 +15,9 @@ export class NewslettersService {
       },
     });
 
+    if (!user.industryId) {
+      throw new BadRequestException('사전조사 미실시 유저입니다');
+    }
     const interestIds = user.interests.map((data) => data.interestId);
     if (interestIds.length === 0) {
       throw new BadRequestException('사전조사 미실시 유저입니다');
