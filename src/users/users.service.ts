@@ -37,6 +37,9 @@ export class UsersService {
         gender,
         emailIndex: `${emailIndex}`,
       },
+      include: {
+        interests: true,
+      },
     });
     const accessToken = await this.jwtService.signAsync({ id: user.id });
 
@@ -250,6 +253,9 @@ export class UsersService {
             id: newIndustryId,
           },
         },
+      },
+      include: {
+        interests: true,
       },
     });
 
