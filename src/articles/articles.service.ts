@@ -9,7 +9,7 @@ export class ArticlesService {
   constructor(private prisma: PrismaService) {}
 
   // POP3 프로토콜 로직
-  @Cron('0 */2 * * * *')
+  @Cron('0 */3 * * * *')
   async POP3() {
     const allUser = await this.prisma.user.findMany({
       include: {
@@ -27,21 +27,28 @@ export class ArticlesService {
       });
       const emailList = await pop3.UIDL();
       const numOfArticles = user._count.articles;
-      // '새롭게' 수신된 POP3 이메일에 대해서만 파싱
+      // 새롭게 수신한 POP3 이메일에 대해서만 파싱
       for (let i = numOfArticles + 1; i <= emailList.length; i++) {
         const rawEmail = await pop3.RETR(i);
         const parsedEmail = await simpleParser(rawEmail);
         const { address } = parsedEmail.from.value[0];
+        // 최대 3회까지 뉴스레터 브랜드 존재 여부 검사
         let newsletter = await this.prisma.newsletter.findUnique({
           where: {
             brandEmail: address,
           },
         });
-        // 구독 확인 아티클을 수신한 경우, secondEmail에 접근
         if (!newsletter) {
           newsletter = await this.prisma.newsletter.findUnique({
             where: {
               secondEmail: address,
+            },
+          });
+        }
+        if (!newsletter) {
+          newsletter = await this.prisma.newsletter.findUnique({
+            where: {
+              thirdEmail: address,
             },
           });
         }

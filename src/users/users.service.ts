@@ -104,12 +104,15 @@ export class UsersService {
     const { intersection, union } =
       await this.newslettersService.getRecommendedNewsletters(userId);
 
+    const accessToken = await this.jwtService.signAsync({ id: userId });
+
     if (intersection.length >= 6) {
-      return { user: updatedUser, data: intersection.slice(0, 6) };
+      return { user: updatedUser, data: intersection.slice(0, 6), accessToken };
     } else {
       return {
         user: updatedUser,
         data: intersection.concat(union).slice(0, 6),
+        accessToken,
       };
     }
   }
