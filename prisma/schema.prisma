@@ -58,6 +58,7 @@ model Newsletter {
   imageUrl          String
   brandEmail        String               @unique
   secondEmail       String               @unique
+  thirdEmail        String               @unique
   doubleCheck       Boolean              @default(false)
   createdAt         DateTime             @default(now())
   updatedAt         DateTime             @updatedAt
