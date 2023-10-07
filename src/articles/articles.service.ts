@@ -52,15 +52,19 @@ export class ArticlesService {
             },
           });
         }
+        // 아티클 수신 날짜 UTC to KST 변환
+        const KR_TIME_DIFF = 9 * 60 * 60 * 1000;
         const utcDate = new Date(parsedEmail.date);
+        const kstDate = new Date(utcDate.getTime() + KR_TIME_DIFF);
         const stringifyHTML = parsedEmail.html as string;
+
         await this.prisma.article.create({
           data: {
             title: parsedEmail.subject,
             body: stringifyHTML
               .replace(/"/g, '"')
               .replace(/\n/g, '\n') as string,
-            date: utcDate,
+            date: kstDate,
             publishMonth: utcDate.getMonth() + 1,
             publishDate: utcDate.getDate(),
             userId: user.id,
