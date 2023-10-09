@@ -32,11 +32,16 @@ export class NewslettersService {
                 id: user.industryId,
               },
             },
+          },
+          {
             interests: {
               some: {
                 id: { in: interestIds },
               },
             },
+          },
+          {
+            temporaryMiss: false,
           },
         ],
         NOT: {
@@ -62,11 +67,18 @@ export class NewslettersService {
 
     const union1 = await this.prisma.newsletter.findMany({
       where: {
-        industries: {
-          some: {
-            id: user.industryId,
+        AND: [
+          {
+            industries: {
+              some: {
+                id: user.industryId,
+              },
+            },
           },
-        },
+          {
+            temporaryMiss: false,
+          },
+        ],
         NOT: {
           users: {
             some: { userId },
@@ -78,11 +90,19 @@ export class NewslettersService {
 
     const union2 = await this.prisma.newsletter.findMany({
       where: {
-        interests: {
-          some: {
-            id: { in: interestIds },
+        AND: [
+          {
+            interests: {
+              some: {
+                id: { in: interestIds },
+              },
+            },
           },
-        },
+          {
+            temporaryMiss: false,
+          },
+        ],
+
         NOT: {
           users: {
             some: { userId },
@@ -230,7 +250,7 @@ export class NewslettersService {
     let dayIds: number[];
 
     if (!industries) {
-      industryIds = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16];
+      industryIds = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14];
     } else {
       industryIds =
         typeof industries === 'string'
@@ -265,6 +285,9 @@ export class NewslettersService {
               users: {
                 some: { userId },
               },
+            },
+            {
+              temporaryMiss: false,
             },
           ],
         },
@@ -302,6 +325,9 @@ export class NewslettersService {
               days: {
                 some: { id: { in: dayIds } },
               },
+            },
+            {
+              temporaryMiss: false,
             },
           ],
           NOT: {
@@ -356,6 +382,9 @@ export class NewslettersService {
                 some: { userId },
               },
             },
+            {
+              temporaryMiss: false,
+            },
           ],
         },
         orderBy: {
@@ -395,6 +424,9 @@ export class NewslettersService {
                   id: { in: dayIds },
                 },
               },
+            },
+            {
+              temporaryMiss: false,
             },
           ],
           NOT: {
@@ -467,6 +499,9 @@ export class NewslettersService {
                 some: { id: { in: dayIds } },
               },
             },
+            {
+              temporaryMiss: false,
+            },
           ],
         },
         orderBy: {
@@ -509,6 +544,9 @@ export class NewslettersService {
                   id: { in: dayIds },
                 },
               },
+            },
+            {
+              temporaryMiss: false,
             },
           ],
         },
