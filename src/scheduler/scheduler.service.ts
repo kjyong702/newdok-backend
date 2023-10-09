@@ -1,11 +1,13 @@
 import { Injectable } from '@nestjs/common';
 import { ArticlesService } from '../articles/articles.service';
-import { PrismaService } from '../prisma.service';
+import { Cron } from '@nestjs/schedule';
 
 @Injectable()
 export class SchedulerService {
-  constructor(
-    private articlesService: ArticlesService,
-    private prisma: PrismaService,
-  ) {}
+  constructor(private articlesService: ArticlesService) {}
+
+  @Cron('0 */1 * * * *')
+  async test() {
+    this.articlesService.POP3();
+  }
 }
