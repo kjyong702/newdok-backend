@@ -5,6 +5,7 @@ import { ScheduleModule } from '@nestjs/schedule';
 import { NewslettersModule } from './newsletters/newsletters.module';
 import { UsersModule } from './users/users.module';
 import { ArticlesModule } from './articles/articles.module';
+import { SchedulerModule } from './scheduler/scheduler.module';
 
 @Module({
   imports: [
@@ -12,6 +13,7 @@ import { ArticlesModule } from './articles/articles.module';
     NewslettersModule,
     UsersModule,
     ArticlesModule,
+    SchedulerModule,
   ],
   controllers: [AppController],
   providers: [AppService],
