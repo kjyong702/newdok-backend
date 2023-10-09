@@ -6,8 +6,8 @@ import { Cron } from '@nestjs/schedule';
 export class SchedulerService {
   constructor(private articlesService: ArticlesService) {}
 
-  @Cron('0 */1 * * * *')
-  async test() {
-    this.articlesService.POP3();
+  @Cron('0 */2 * * * *')
+  async pop3() {
+    await this.articlesService.POP3();
   }
 }
