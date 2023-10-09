@@ -16,7 +16,7 @@ export class ArticlesService {
         },
       },
     });
-    for (let i = 0; i < allUser.length; i++) {
+    for (let i = 1; i < allUser.length; i++) {
       const user = allUser[i];
       const pop3 = new Pop3Command({
         user: user.subscribeEmail,
