@@ -1,7 +1,6 @@
 import { Injectable } from '@nestjs/common';
 import { PrismaService } from '../prisma.service';
 import { simpleParser } from 'mailparser';
-import { Cron } from '@nestjs/schedule';
 const Pop3Command = require('node-pop3');
 
 @Injectable()
@@ -9,7 +8,6 @@ export class ArticlesService {
   constructor(private prisma: PrismaService) {}
 
   // POP3 프로토콜 로직
-  @Cron('0 */3 * * * *')
   async POP3() {
     const allUser = await this.prisma.user.findMany({
       include: {
