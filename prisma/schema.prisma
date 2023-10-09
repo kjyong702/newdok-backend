@@ -49,17 +49,18 @@ model Day {
 model Newsletter {
   id                Int                  @id @default(autoincrement())
   brandName         String               @unique
-  firstDescription  String
-  secondDescription String
-  detailDescription String
-  publicationCycle  String
-  subscribeUrl      String               @unique
-  previewUrl        String               @unique
-  imageUrl          String
+  firstDescription  String?
+  secondDescription String?
+  detailDescription String?
+  publicationCycle  String?
+  subscribeUrl      String?
+  previewUrl        String?
+  imageUrl          String?
   brandEmail        String               @unique
   secondEmail       String               @unique
   thirdEmail        String               @unique
   doubleCheck       Boolean              @default(false)
+  temporaryMiss     Boolean              @default(false)
   createdAt         DateTime             @default(now())
   updatedAt         DateTime             @updatedAt
   users             NewslettersOnUsers[]

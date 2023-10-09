@@ -1,7 +1,6 @@
 import { Injectable } from '@nestjs/common';
 import { PrismaService } from '../prisma.service';
 import { simpleParser } from 'mailparser';
-import { Cron } from '@nestjs/schedule';
 const Pop3Command = require('node-pop3');
 
 @Injectable()
@@ -9,7 +8,6 @@ export class ArticlesService {
   constructor(private prisma: PrismaService) {}
 
   // POP3 프로토콜 로직
-  @Cron('0 */3 * * * *')
   async POP3() {
     const allUser = await this.prisma.user.findMany({
       include: {
@@ -18,7 +16,7 @@ export class ArticlesService {
         },
       },
     });
-    for (let i = 0; i < allUser.length; i++) {
+    for (let i = 1; i < allUser.length; i++) {
       const user = allUser[i];
       const pop3 = new Pop3Command({
         user: user.subscribeEmail,
@@ -52,15 +50,19 @@ export class ArticlesService {
             },
           });
         }
+        // 아티클 수신 날짜 UTC to KST 변환
+        const KR_TIME_DIFF = 9 * 60 * 60 * 1000;
         const utcDate = new Date(parsedEmail.date);
+        const kstDate = new Date(utcDate.getTime() + KR_TIME_DIFF);
         const stringifyHTML = parsedEmail.html as string;
+
         await this.prisma.article.create({
           data: {
             title: parsedEmail.subject,
             body: stringifyHTML
               .replace(/"/g, '"')
               .replace(/\n/g, '\n') as string,
-            date: utcDate,
+            date: kstDate,
             publishMonth: utcDate.getMonth() + 1,
             publishDate: utcDate.getDate(),
             userId: user.id,
