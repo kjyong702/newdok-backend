@@ -1,12 +1,4 @@
-import {
-  Controller,
-  Get,
-  Delete,
-  Query,
-  Param,
-  Req,
-  UseGuards,
-} from '@nestjs/common';
+import { Controller, Get, Query, Param, Req, UseGuards } from '@nestjs/common';
 import { ArticlesService } from './articles.service';
 import { AuthGuard } from '../guards/auth.guard';
 import { ApiTags, ApiOperation, ApiQuery, ApiParam } from '@nestjs/swagger';
@@ -43,22 +35,5 @@ export class ArticlesController {
   @Get('/:id')
   async getArticleById(@Param('id') id: string) {
     return this.articlesService.getArticleById(id);
-  }
-
-  @ApiParam({
-    name: 'id',
-    description: '아티클 id',
-    example: 1,
-  })
-  @ApiOperation({ summary: '아티클 삭제' })
-  @Delete('/:id')
-  async deleteArticleById(@Param('id') id: string) {
-    return this.articlesService.deleteArticleById(id);
-  }
-
-  @ApiOperation({ summary: '아티클 전체 삭제' })
-  @Delete('')
-  async deleteArticles() {
-    return this.articlesService.deleteArticles();
   }
 }

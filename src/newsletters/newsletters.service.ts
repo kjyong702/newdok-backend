@@ -297,6 +297,7 @@ export class NewslettersService {
           },
         },
         include: {
+          users: true,
           interests: true,
         },
       });
@@ -310,6 +311,7 @@ export class NewslettersService {
           interests: newsletter.interests,
           isSubscribed: 'CONFIRMED',
           shortDescription: newsletter.secondDescription,
+          subscriptionCount: newsletter.users.length,
         });
       });
       // 2. 인기순 정렬 + 구독 중이 아닌 뉴스레터
@@ -342,6 +344,7 @@ export class NewslettersService {
           },
         },
         include: {
+          users: true,
           interests: true,
         },
       });
@@ -354,10 +357,15 @@ export class NewslettersService {
           interests: newsletter.interests,
           isSubscribed: 'INITIAL',
           shortDescription: newsletter.secondDescription,
+          subscriptionCount: newsletter.users.length,
         });
       });
 
-      return newslettersSubscribed.concat(newslettersUnSubscribed);
+      return newslettersSubscribed
+        .concat(newslettersUnSubscribed)
+        .sort((news1, news2) => {
+          return news2.subscriptionCount - news1.subscriptionCount;
+        });
     } else {
       // 3. 최신순 정렬 + 구독 중인 뉴스레터
       const arr1 = await this.prisma.newsletter.findMany({
@@ -404,6 +412,7 @@ export class NewslettersService {
           interests: newsletter.interests,
           isSubscribed: 'CONFIRMED',
           shortDescription: newsletter.secondDescription,
+          createdAt: newsletter.createdAt,
         });
       });
 
@@ -452,10 +461,15 @@ export class NewslettersService {
           interests: newsletter.interests,
           isSubscribed: 'INITIAL',
           shortDescription: newsletter.secondDescription,
+          createdAt: newsletter.createdAt,
         });
       });
 
-      return newslettersSubscribed.concat(newslettersUnSubscribed);
+      return newslettersSubscribed
+        .concat(newslettersUnSubscribed)
+        .sort((news1, news2) => {
+          return news1.createdAt - news2.createdAt;
+        });
     }
   }
 
