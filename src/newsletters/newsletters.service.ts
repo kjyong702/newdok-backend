@@ -291,11 +291,6 @@ export class NewslettersService {
             },
           ],
         },
-        orderBy: {
-          users: {
-            _count: 'desc',
-          },
-        },
         include: {
           users: true,
           interests: true,
@@ -338,11 +333,6 @@ export class NewslettersService {
             },
           },
         },
-        orderBy: {
-          users: {
-            _count: 'desc',
-          },
-        },
         include: {
           users: true,
           interests: true,
@@ -361,12 +351,13 @@ export class NewslettersService {
         });
       });
 
+      // 인기순 기준으로 내림차순 정렬
       return newslettersSubscribed
         .concat(newslettersUnSubscribed)
         .sort((news1, news2) => {
           return news2.subscriptionCount - news1.subscriptionCount;
         });
-    } else {
+    } else if (orderOpt === '최신순') {
       // 3. 최신순 정렬 + 구독 중인 뉴스레터
       const arr1 = await this.prisma.newsletter.findMany({
         where: {
@@ -394,9 +385,6 @@ export class NewslettersService {
               temporaryMiss: false,
             },
           ],
-        },
-        orderBy: {
-          createdAt: 'asc',
         },
         include: {
           interests: true,
@@ -444,9 +432,6 @@ export class NewslettersService {
             },
           },
         },
-        orderBy: {
-          createdAt: 'asc',
-        },
         include: {
           interests: true,
         },
@@ -465,10 +450,11 @@ export class NewslettersService {
         });
       });
 
+      // 최신순 기준으로 내림차순 정렬
       return newslettersSubscribed
         .concat(newslettersUnSubscribed)
         .sort((news1, news2) => {
-          return news1.createdAt - news2.createdAt;
+          return news2.createdAt - news1.createdAt;
         });
     }
   }
