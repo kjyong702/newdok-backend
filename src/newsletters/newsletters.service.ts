@@ -357,7 +357,7 @@ export class NewslettersService {
         .sort((news1, news2) => {
           return news2.subscriptionCount - news1.subscriptionCount;
         });
-    } else if (orderOpt === '최신순') {
+    } else {
       // 3. 최신순 정렬 + 구독 중인 뉴스레터
       const arr1 = await this.prisma.newsletter.findMany({
         where: {
@@ -551,7 +551,7 @@ export class NewslettersService {
           ],
         },
         orderBy: {
-          createdAt: 'asc',
+          createdAt: 'desc',
         },
         include: {
           interests: true,
