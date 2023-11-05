@@ -551,7 +551,7 @@ export class NewslettersService {
           ],
         },
         orderBy: {
-          createdAt: 'asc',
+          createdAt: 'desc',
         },
         include: {
           interests: true,
