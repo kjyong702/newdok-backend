@@ -12,38 +12,18 @@ model User {
   loginId           String               @unique
   password          String
   phoneNumber       String
-  subscribeEmail    String               @unique
-  subscribePassword String
   nickname          String
   birthYear         String
   gender            String
-  emailIndex        String               
+  emailIndex        String
+  subscribeEmail    String               @unique
+  subscribePassword String               
   createdAt         DateTime             @default(now())
   industry          Industry?            @relation(fields: [industryId], references: [id])
   industryId        Int?
   interests         InterestsOnUsers[]
   newsletters       NewslettersOnUsers[]
   articles          Article[]
-}
-
-model Industry {
-  id          Int          @id @default(autoincrement())
-  name        String       @unique
-  users       User[]
-  newsletters Newsletter[]
-}
-
-model Interest {
-  id          Int                @id @default(autoincrement())
-  name        String             @unique
-  users       InterestsOnUsers[]
-  newsletters Newsletter[]
-}
-
-model Day {
-  id          Int          @id @default(autoincrement())
-  name        String       @unique
-  newsletters Newsletter[]
 }
 
 model Newsletter {
@@ -84,14 +64,24 @@ model Article {
   newsletterId Int
 }
 
-model InterestsOnUsers {
-  user       User     @relation(fields: [userId], references: [id])
-  userId     Int
-  interest   Interest @relation(fields: [interestId], references: [id])
-  interestId Int
-  createdAt  DateTime @default(now())
+model Industry {
+  id          Int          @id @default(autoincrement())
+  name        String       @unique
+  users       User[]
+  newsletters Newsletter[]
+}
 
-  @@id([userId, interestId])
+model Interest {
+  id          Int                @id @default(autoincrement())
+  name        String             @unique
+  users       InterestsOnUsers[]
+  newsletters Newsletter[]
+}
+
+model Day {
+  id          Int          @id @default(autoincrement())
+  name        String       @unique
+  newsletters Newsletter[]
 }
 
 model NewslettersOnUsers {
@@ -104,3 +94,14 @@ model NewslettersOnUsers {
 
   @@id([userId, newsletterId])
 }
+
+model InterestsOnUsers {
+  user       User     @relation(fields: [userId], references: [id])
+  userId     Int
+  interest   Interest @relation(fields: [interestId], references: [id])
+  interestId Int
+  createdAt  DateTime @default(now())
+
+  @@id([userId, interestId])
+}
+
