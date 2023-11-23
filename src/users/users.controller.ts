@@ -70,22 +70,6 @@ export class UsersController {
   }
 
   @ApiOperation({
-    summary: 'SMS 인증번호 전송',
-    description: '6자리 숫자 인증번호 전송',
-  })
-  @ApiBody({
-    schema: {
-      properties: {
-        phoneNumber: { type: 'string', example: '01055039184' },
-      },
-    },
-  })
-  @Post('/auth/SMS')
-  async sendSMS(@Body() body: Record<string, string>) {
-    return this.usersService.sendSMS(body.phoneNumber);
-  }
-
-  @ApiOperation({
     summary: '아이디 중복 검사',
     description: '해당 아이디로 가입된 계정 존재 여부 검사',
   })
