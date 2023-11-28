@@ -1,13 +1,15 @@
 import { Module } from '@nestjs/common';
+import { NewslettersModule } from '../newsletters/newsletters.module';
+import { ArticlesModule } from '../articles/articles.module';
 import { JwtModule } from '@nestjs/jwt';
 import { UsersController } from './users.controller';
 import { UsersService } from './users.service';
-import { NewslettersService } from 'src/newsletters/newsletters.service';
-import { ArticlesService } from 'src/articles/articles.service';
 import { PrismaService } from '../prisma.service';
 
 @Module({
   imports: [
+    NewslettersModule,
+    ArticlesModule,
     JwtModule.register({
       global: true,
       secret: process.env.JWT_SECRET_KEY,
@@ -15,6 +17,6 @@ import { PrismaService } from '../prisma.service';
     }),
   ],
   controllers: [UsersController],
-  providers: [UsersService, NewslettersService, ArticlesService, PrismaService],
+  providers: [UsersService, PrismaService],
 })
 export class UsersModule {}

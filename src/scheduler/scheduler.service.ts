@@ -1,6 +1,6 @@
 import { Injectable } from '@nestjs/common';
-import { ArticlesService } from '../articles/articles.service';
 import { Cron } from '@nestjs/schedule';
+import { ArticlesService } from '../articles/articles.service';
 
 @Injectable()
 export class SchedulerService {
@@ -8,6 +8,6 @@ export class SchedulerService {
 
   @Cron('0 */1 * * * *')
   async pop3() {
-    await this.articlesService.POP3();
+    return this.articlesService.POP3();
   }
 }

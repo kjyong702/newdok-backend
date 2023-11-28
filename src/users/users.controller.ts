@@ -9,8 +9,6 @@ import {
   UseGuards,
 } from '@nestjs/common';
 import { UsersService } from './users.service';
-import { NewslettersService } from 'src/newsletters/newsletters.service';
-import { ArticlesService } from 'src/articles/articles.service';
 import { CreateUserDto } from './dtos/create-user.dto';
 import { AuthGuard } from '../guards/auth.guard';
 import { ApiTags, ApiOperation, ApiBody, ApiQuery } from '@nestjs/swagger';
@@ -18,11 +16,7 @@ import { ApiTags, ApiOperation, ApiBody, ApiQuery } from '@nestjs/swagger';
 @ApiTags('User')
 @Controller('users')
 export class UsersController {
-  constructor(
-    private usersService: UsersService,
-    private newslettersService: NewslettersService,
-    private articlesService: ArticlesService,
-  ) {}
+  constructor(private usersService: UsersService) {}
 
   @ApiOperation({ summary: '회원가입' })
   @ApiBody({
@@ -73,22 +67,6 @@ export class UsersController {
       interestIds,
       req.user.id,
     );
-  }
-
-  @ApiOperation({
-    summary: 'SMS 인증번호 전송',
-    description: '6자리 숫자 인증번호 전송',
-  })
-  @ApiBody({
-    schema: {
-      properties: {
-        phoneNumber: { type: 'string', example: '01055039184' },
-      },
-    },
-  })
-  @Post('/auth/SMS')
-  async sendSMS(@Body() body: Record<string, string>) {
-    return this.usersService.sendSMS(body.phoneNumber);
   }
 
   @ApiOperation({
