@@ -15,7 +15,7 @@ async function bootstrap() {
   );
   app.useStaticAssets(join(__dirname, '..', 'public'), { prefix: '/public' });
   app.enableCors({
-    origin: '*',
+    origin: ['https://newdok.vercel.app', 'http://localhost:3000'],
   });
   const config = new DocumentBuilder()
     .setTitle('Newdok API description')
