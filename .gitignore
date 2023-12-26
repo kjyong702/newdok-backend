@@ -2,6 +2,8 @@
 /dist
 /node_modules
 .env
+.production.env
+.development.env
 newdok-backend-key.pem
 
 # Logs
