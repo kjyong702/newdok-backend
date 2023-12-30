@@ -15,6 +15,7 @@ import { AuthModule } from './auth/auth.module';
         process.env.NODE_ENV === 'production'
           ? '.production.env'
           : '.development.env',
+      isGlobal: true,
     }),
     UsersModule,
     NewslettersModule,
