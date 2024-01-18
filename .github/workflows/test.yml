@@ -71,7 +71,7 @@ jobs:
       - name: configure AWS credentials
         uses: aws-actions/configure-aws-credentials@v4
         with:
-          role-to-assume: arn:aws:iam::866401402898:role/github_kjyong702_newdok_OIDC
+          role-to-assume: arn:aws:iam::866401402898:role/github_kjyong702_newdok-backend_OIDC
           role-session-name: newdokRoleSession
           aws-region: ${{ env.AWS_REGION }}
 
