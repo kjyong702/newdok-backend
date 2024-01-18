@@ -1,0 +1,112 @@
+{
+  "taskDefinitionArn": "arn:aws:ecs:ap-northeast-2:866401402898:task-definition/newdok-td:3",
+  "containerDefinitions": [
+    {
+      "name": "newdok",
+      "cpu": 0,
+      "portMappings": [
+        {
+          "name": "newdok-80-tcp",
+          "containerPort": 80,
+          "hostPort": 80,
+          "protocol": "tcp",
+          "appProtocol": "http"
+        }
+      ],
+      "essential": true,
+      "environment": [
+        {
+          "name": "PORT",
+          "value": "80"
+        }
+      ],
+      "environmentFiles": [],
+      "mountPoints": [],
+      "volumesFrom": [],
+      "secrets": [
+        {
+          "name": "DATABASE_URL",
+          "valueFrom": "arn:aws:secretsmanager:ap-northeast-2:866401402898:secret:newdok-secrets-q73CJ5:DATABASE_URL::"
+        },
+        {
+          "name": "JWT_SECRET_KEY",
+          "valueFrom": "arn:aws:secretsmanager:ap-northeast-2:866401402898:secret:newdok-secrets-q73CJ5:JWT_SECRET_KEY::"
+        },
+        {
+          "name": "NCP_ACCESS_KEY",
+          "valueFrom": "arn:aws:secretsmanager:ap-northeast-2:866401402898:secret:newdok-secrets-q73CJ5:NCP_ACCESS_KEY::"
+        },
+        {
+          "name": "NCP_FROM_NUMBER",
+          "valueFrom": "arn:aws:secretsmanager:ap-northeast-2:866401402898:secret:newdok-secrets-q73CJ5:NCP_FROM_NUMBER::"
+        },
+        {
+          "name": "NCP_SECRET_KEY",
+          "valueFrom": "arn:aws:secretsmanager:ap-northeast-2:866401402898:secret:newdok-secrets-q73CJ5:NCP_SECRET_KEY::"
+        },
+        {
+          "name": "NCP_SERVICE_ID",
+          "valueFrom": "arn:aws:secretsmanager:ap-northeast-2:866401402898:secret:newdok-secrets-q73CJ5:NCP_SERVICE_ID::"
+        }
+      ],
+      "ulimits": [],
+      "logConfiguration": {
+        "logDriver": "awslogs",
+        "options": {
+          "awslogs-create-group": "true",
+          "awslogs-group": "/ecs/newdok-td",
+          "awslogs-region": "ap-northeast-2",
+          "awslogs-stream-prefix": "ecs"
+        },
+        "secretOptions": []
+      }
+    }
+  ],
+  "family": "newdok-td",
+  "executionRoleArn": "arn:aws:iam::866401402898:role/ecsTaskExecutionRole",
+  "networkMode": "awsvpc",
+  "revision": 3,
+  "volumes": [],
+  "status": "ACTIVE",
+  "requiresAttributes": [
+    {
+      "name": "com.amazonaws.ecs.capability.logging-driver.awslogs"
+    },
+    {
+      "name": "ecs.capability.execution-role-awslogs"
+    },
+    {
+      "name": "com.amazonaws.ecs.capability.ecr-auth"
+    },
+    {
+      "name": "com.amazonaws.ecs.capability.docker-remote-api.1.19"
+    },
+    {
+      "name": "ecs.capability.secrets.asm.environment-variables"
+    },
+    {
+      "name": "ecs.capability.execution-role-ecr-pull"
+    },
+    {
+      "name": "com.amazonaws.ecs.capability.docker-remote-api.1.18"
+    },
+    {
+      "name": "ecs.capability.task-eni"
+    },
+    {
+      "name": "com.amazonaws.ecs.capability.docker-remote-api.1.29"
+    }
+  ],
+  "placementConstraints": [],
+  "compatibilities": ["EC2", "FARGATE"],
+  "requiresCompatibilities": ["FARGATE"],
+  "cpu": "1024",
+  "memory": "2048",
+  "runtimePlatform": {
+    "cpuArchitecture": "X86_64",
+    "operatingSystemFamily": "LINUX"
+  },
+  "registeredAt": "2024-01-18T07:29:35.601Z",
+  "registeredBy": "arn:aws:iam::866401402898:root",
+  "tags": []
+}
