@@ -1,0 +1,106 @@
+name: testAndDeploy
+
+on:
+  push:
+    branches:
+      - main
+      - dev
+
+permissions:
+  id-token: write
+  contents: read
+
+env:
+  AWS_REGION: ap-northeast-2
+  ECR_REPOSITORY: newdok
+  ECS_SERVICE: newdok-service
+  ECS_CLUSTER: newdok-cluster
+  ECS_TASK_DEFINITION: ./task_definition.json
+  CONTAINER_NAME: newdok
+
+jobs:
+  test:
+    runs-on: ubuntu-22.04
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v3
+      - name: Node.js setup
+        uses: actions/setup-node@v3
+        with:
+          node_version: '20.x'
+      - name: Install npm packages
+        run: npm ci
+      - name: test build
+        run: npm run build
+
+  dev-deploy:
+    if: github.ref == 'refs/heads/dev'
+    runs-on: ubuntu-latest
+    needs: test
+    steps:
+      - name: Set up SSh
+        run: |
+          mkdir -p ~/.ssh/
+          echo "${{ secrets.SSH_DEV_PRIVATE_KEY }}" > ~/.ssh/id_rsa
+          chmod 600 ~/.ssh/id_rsa
+      - name: Set up known hosts
+        run: |
+          echo "${{ secrets.SSH_DEV_KNOWN_HOSTS }}" >> ~/.ssh/known_hosts
+          chmod 644 ~/.ssh/known_hosts
+      - name: SSH and deploy
+        run: |
+          ssh ${{ secrets.SSH_DEV_USERNAME }}@${{ secrets.SSH_DEV_PUBLIC_IP }} "
+          cd newdok-backend
+          git pull origin dev
+          npm install
+          npx prisma generate
+          npm run build
+          sudo pm2 kill
+          npm run deploy:dev
+          exit
+          "
+
+  prod-deploy:
+    runs-on: ubuntu-latest
+    if: github.ref == 'refs/heads/main'
+    needs: test
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: arn:aws:iam::866401402898:role/github_kjyong702_newdok_OIDC
+          role-session-name: newdokRoleSession
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: Login to Amazon ECR
+        id: login-ecr
+        uses: aws-actions/amazon-ecr-login@62f4f872db3836360b72999f4b87f1ff13310f3a
+
+      - name: Build, tag, and push image to Amazon ECR
+        id: build-image
+        env:
+          ECR_REGISTRY: ${{ steps.login-ecr.outputs.registry }}
+          IMAGE_TAG: ${{ github.sha }}
+        run: |
+          docker build -t $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG .
+          docker push $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG
+          echo "image=$ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG" >> $GITHUB_OUTPUT
+
+      - name: Fill in the new image ID in the Amazon ECS task definition
+        id: task-def
+        uses: aws-actions/amazon-ecs-render-task-definition@c804dfbdd57f713b6c079302a4c01db7017a36fc
+        with:
+          task-definition: ${{ env.ECS_TASK_DEFINITION }}
+          container-name: ${{ env.CONTAINER_NAME }}
+          image: ${{ steps.build-image.outputs.image }}
+
+      - name: Deploy Amazon ECS task definition
+        uses: aws-actions/amazon-ecs-deploy-task-definition@df9643053eda01f169e64a0e60233aacca83799a
+        with:
+          task-definition: ${{ steps.task-def.outputs.task-definition }}
+          service: ${{ env.ECS_SERVICE }}
+          cluster: ${{ env.ECS_CLUSTER }}
+          wait-for-service-stability: true
