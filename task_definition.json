@@ -1,8 +1,9 @@
 {
-  "taskDefinitionArn": "arn:aws:ecs:ap-northeast-2:866401402898:task-definition/newdok-td:3",
+  "taskDefinitionArn": "arn:aws:ecs:ap-northeast-2:866401402898:task-definition/newdok-td:7",
   "containerDefinitions": [
     {
       "name": "newdok",
+      "image": "866401402898.dkr.ecr.ap-northeast-2.amazonaws.com/newdok:c39bb0702a3e1dec77498287188c747e02f75553",
       "cpu": 0,
       "portMappings": [
         {
@@ -20,7 +21,6 @@
           "value": "80"
         }
       ],
-      "environmentFiles": [],
       "mountPoints": [],
       "volumesFrom": [],
       "secrets": [
@@ -49,7 +49,6 @@
           "valueFrom": "arn:aws:secretsmanager:ap-northeast-2:866401402898:secret:newdok-secrets-q73CJ5:NCP_SERVICE_ID::"
         }
       ],
-      "ulimits": [],
       "logConfiguration": {
         "logDriver": "awslogs",
         "options": {
@@ -65,7 +64,7 @@
   "family": "newdok-td",
   "executionRoleArn": "arn:aws:iam::866401402898:role/ecsTaskExecutionRole",
   "networkMode": "awsvpc",
-  "revision": 3,
+  "revision": 7,
   "volumes": [],
   "status": "ACTIVE",
   "requiresAttributes": [
@@ -100,13 +99,13 @@
   "placementConstraints": [],
   "compatibilities": ["EC2", "FARGATE"],
   "requiresCompatibilities": ["FARGATE"],
-  "cpu": "1024",
-  "memory": "2048",
+  "cpu": "256",
+  "memory": "512",
   "runtimePlatform": {
     "cpuArchitecture": "X86_64",
     "operatingSystemFamily": "LINUX"
   },
-  "registeredAt": "2024-01-18T07:29:35.601Z",
+  "registeredAt": "2024-01-21T11:36:51.215Z",
   "registeredBy": "arn:aws:iam::866401402898:root",
   "tags": []
 }
