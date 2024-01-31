@@ -45,16 +45,16 @@
 <br />
 
 
-# ⚒️ ERD
+## 📐 Server Architecture
 
-![image](https://kr.object.ncloudstorage.com/newdok-bucket/%EB%89%B4%EB%8F%85%20ERD%28%EC%B5%9C%EC%A2%85%29.png)
+<img width="80%" src="https://kr.object.ncloudstorage.com/newdok-bucket/%EC%84%9C%EB%B2%84%20%EC%95%84%ED%82%A4%ED%85%8D%EC%B2%98%28%EC%8B%A0%EB%B2%84%EC%A0%84%29.png"/>
 
 <br />
 
 
-## 📐 Server Architecture
+# ⚒️ ERD
 
-<img width="80%" src="https://kr.object.ncloudstorage.com/newdok-bucket/%EB%89%B4%EB%8F%85%20%EC%95%84%ED%82%A4%ED%85%8D%EC%B2%98.png"/>
+![image](https://kr.object.ncloudstorage.com/newdok-bucket/%EB%89%B4%EB%8F%85%20ERD%28%EC%B5%9C%EC%A2%85%29.png)
 
 <br />
 
@@ -72,27 +72,28 @@
   "scripts": {
     "build": "nest build",
     "format": "prettier --write \"src/**/*.ts\" \"test/**/*.ts\"",
-    "start": "nest start",
-    "start:dev": "nest start --watch",
-    "start:debug": "nest start --debug --watch",
-    "start:prod": "node dist/main",
-    "lint": "eslint \"{src,apps,libs,test}/**/*.ts\" --fix",
-    "test": "jest",
-    "test:watch": "jest --watch",
-    "test:cov": "jest --coverage",
-    "test:debug": "node --inspect-brk -r tsconfig-paths/register -r ts-node/register node_modules/.bin/jest --runInBand",
-    "test:e2e": "jest --config ./test/jest-e2e.json"
+    "start": "cross-env NODE_ENV=development nest start --watch",
+    "deploy:dev": "cross-env sudo NODE_ENV=development PORT=80 pm2 start dist/main.js",
+    "deploy:prod": "cross-env sudo NODE_ENV=production PORT=80 node dist/main.js",
+    "db-push:dev": "dotenv -e .development.env -- npx prisma db push",
+    "db-pull:dev": "dotenv -e .devleopment.env -- npx prisma db pull",
+    "db-pull:prod": "dotenv -e .production.env -- npx prisma db pull",
+    "db-studio:dev": "dotenv -e .development.env -- npx prisma studio",
+    "db-studio:prod": "dotenv -e .production.env -- npx prisma studio"
   },
   "dependencies": {
     "@nestjs/common": "^9.0.0",
+    "@nestjs/config": "^3.1.1",
     "@nestjs/core": "^9.0.0",
     "@nestjs/platform-express": "^9.0.0",
     "@nestjs/schedule": "^3.0.2",
     "@nestjs/swagger": "^6.3.0",
-    "@prisma/client": "^5.4.2",
+    "@prisma/client": "^5.8.1",
     "bcrypt": "^5.1.0",
     "class-transformer": "^0.5.1",
     "class-validator": "^0.14.0",
+    "cross-env": "^7.0.3",
+    "dotenv-cli": "^7.3.0",
     "mailparser": "^3.6.4",
     "node-pop3": "^0.9.0",
     "reflect-metadata": "^0.1.13",
@@ -118,7 +119,7 @@
     "eslint-plugin-prettier": "^4.0.0",
     "jest": "29.3.1",
     "prettier": "^2.3.2",
-    "prisma": "^5.4.2",
+    "prisma": "^5.8.1",
     "source-map-support": "^0.5.20",
     "supertest": "^6.1.3",
     "ts-jest": "29.0.3",
@@ -145,6 +146,7 @@
     "testEnvironment": "node"
   }
 }
+
 
 
 ```
