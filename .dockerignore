@@ -2,5 +2,4 @@ dist
 node_modules
 .production.env
 .development.env
-newdok-backend-key.pem
 pscale_dump_newdok_main
