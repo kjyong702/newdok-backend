@@ -1,7 +1,7 @@
 name: testAndDeploy
 
 on:
-  push:
+  pull_request:
     branches:
       - main
       - dev
@@ -19,7 +19,7 @@ env:
   CONTAINER_NAME: newdok
 
 jobs:
-  test:
+  build:
     runs-on: ubuntu-22.04
     steps:
       - name: Checkout repository
@@ -36,7 +36,7 @@ jobs:
   dev-deploy:
     if: github.ref == 'refs/heads/dev'
     runs-on: ubuntu-latest
-    needs: test
+    needs: build
     steps:
       - name: Set up SSh
         run: |
@@ -63,7 +63,7 @@ jobs:
   prod-deploy:
     runs-on: ubuntu-latest
     if: github.ref == 'refs/heads/main'
-    needs: test
+    needs: build
     steps:
       - name: Checkout
         uses: actions/checkout@v4
