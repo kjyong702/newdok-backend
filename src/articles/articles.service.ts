@@ -1,7 +1,7 @@
 import { Injectable } from '@nestjs/common';
 import { PrismaService } from '../prisma.service';
 import { simpleParser } from 'mailparser';
-const Pop3Command = require('node-pop3');
+import Pop3Command from 'node-pop3';
 
 @Injectable()
 export class ArticlesService {
@@ -62,9 +62,9 @@ export class ArticlesService {
             body: stringifyHTML
               .replace(/"/g, '"')
               .replace(/\n/g, '\n') as string,
-            date: kstDate,
-            publishMonth: utcDate.getMonth() + 1,
-            publishDate: utcDate.getDate(),
+            date: utcDate,
+            publishMonth: kstDate.getUTCMonth() + 1,
+            publishDate: kstDate.getUTCDate(),
             userId: user.id,
             newsletterId: newsletter.id,
           },
