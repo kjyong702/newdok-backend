@@ -20,6 +20,6 @@ export class AuthController {
   })
   @Post('SMS')
   async sendSMS(@Body() body: Record<string, string>) {
-    return this.authService.sendSMS(body.phoneNumber);
+    return this.authService.sendTwilioSMS(body.phoneNumber);
   }
 }
