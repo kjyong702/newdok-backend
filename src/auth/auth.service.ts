@@ -7,7 +7,7 @@ export class AuthService {
   public constructor(private readonly twilioService: TwilioService) {}
 
   async sendTwilioSMS(phoneNumber: string) {
-    const fromNumber = process.env.TWILIO_FROM_NUMBER || '';
+    const fromNumber = process.env.TWILIO_FROM_NUMBER;
 
     try {
       const verifyCode = Math.floor(Math.random() * (999999 - 100000)) + 100000;
