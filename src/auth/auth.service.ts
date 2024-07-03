@@ -8,6 +8,7 @@ export class AuthService {
     const authToken = process.env.TWILIO_AUTH_TOKEN;
     const messagingServiceSid = process.env.TWILIO_MESSAGING_SERVICE_SID;
 
+    require('dotenv').config();
     const client = twilio(accountSid, authToken);
 
     try {
