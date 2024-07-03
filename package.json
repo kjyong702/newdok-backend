@@ -31,10 +31,10 @@
     "cross-env": "^7.0.3",
     "dotenv-cli": "^7.3.0",
     "mailparser": "^3.6.4",
-    "nestjs-twilio": "^4.4.0",
     "node-pop3": "^0.9.0",
     "reflect-metadata": "^0.1.13",
-    "rxjs": "^7.2.0"
+    "rxjs": "^7.2.0",
+    "twilio": "^5.2.2"
   },
   "devDependencies": {
     "@nestjs/cli": "^9.0.0",
