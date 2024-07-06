@@ -183,6 +183,7 @@ export class ArticlesService {
       brandId: article.newsletter.id,
       brandName: article.newsletter.brandName,
       articleHTML: article.body,
+      brandImageUrl: article.newsletter.imageUrl,
     };
     return data;
   }
