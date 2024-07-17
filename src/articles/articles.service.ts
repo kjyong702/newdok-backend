@@ -2,6 +2,7 @@ import { Injectable } from '@nestjs/common';
 import { PrismaService } from '../prisma.service';
 import { simpleParser } from 'mailparser';
 import Pop3Command from 'node-pop3';
+import { parse } from 'node-html-parser';
 
 @Injectable()
 export class ArticlesService {
@@ -220,5 +221,41 @@ export class ArticlesService {
     });
 
     return user._count.articles;
+  }
+
+  // 아티클 미리보기용 본문 추출
+  async extractTwoSentenceOfArticle(articleId: string) {
+    const article = await this.prisma.article.findUnique({
+      where: {
+        id: parseInt(articleId),
+      },
+    });
+
+    const root = parse(article.body);
+
+    const selectedElements = root.querySelectorAll(
+      '.stb-fore-colored, .stb-bold',
+    );
+    const elements =
+      selectedElements.length === 0
+        ? root.getElementsByTagName('*')
+        : selectedElements;
+
+    const filteredElements = elements.filter((element) => {
+      const style = element.getAttribute('style');
+      const hasColorStyle = style && style.includes('color');
+      const isBlackText = style && style.includes('color: #000000;');
+
+      const hasHref = element.getAttribute('href');
+
+      const isValidText =
+        /[가-힣]/.test(element.text) && element.text.length > 10;
+
+      return !hasHref && (!hasColorStyle || isBlackText) && isValidText;
+    });
+
+    return filteredElements.length > 2
+      ? filteredElements[1].text + ' ' + filteredElements[2].text
+      : filteredElements[0].text;
   }
 }
