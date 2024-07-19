@@ -224,10 +224,14 @@ export class ArticlesService {
   }
 
   // 아티클 미리보기용 본문 추출
-  async extractTwoSentenceOfArticle(articleId: string) {
+  async extractTwoSentenceOfArticle(articleId: number) {
     const article = await this.prisma.article.findUnique({
       where: {
-        id: parseInt(articleId),
+        id: articleId,
+      },
+      select: {
+        id: true,
+        body: true,
       },
     });
 
@@ -256,6 +260,6 @@ export class ArticlesService {
 
     return filteredElements.length > 2
       ? filteredElements[1].text + ' ' + filteredElements[2].text
-      : filteredElements[0].text;
+      : filteredElements[0]?.text;
   }
 }
