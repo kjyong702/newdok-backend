@@ -273,4 +273,33 @@ export class ArticlesService {
       ? filteredElements[1].text + ' ' + filteredElements[2].text
       : filteredElements[0]?.text;
   }
+
+  // 아티클 북마크 요청/삭제
+  async bookmarkArticle(articleId: string, userId: number) {
+    const isBookmarked = await this.prisma.bookmark.findUnique({
+      where: {
+        userId_articleId: {
+          userId,
+          articleId: parseInt(articleId),
+        },
+      },
+    });
+    const result = isBookmarked
+      ? await this.prisma.bookmark.delete({
+          where: {
+            userId_articleId: {
+              userId,
+              articleId: parseInt(articleId),
+            },
+          },
+        })
+      : await this.prisma.bookmark.create({
+          data: {
+            userId,
+            articleId: parseInt(articleId),
+          },
+        });
+
+    return result;
+  }
 }

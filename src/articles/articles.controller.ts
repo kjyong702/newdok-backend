@@ -1,7 +1,22 @@
-import { Controller, Get, Query, Param, Req, UseGuards } from '@nestjs/common';
+import {
+  Controller,
+  Get,
+  Query,
+  Param,
+  Post,
+  Body,
+  Req,
+  UseGuards,
+} from '@nestjs/common';
 import { ArticlesService } from './articles.service';
 import { AuthGuard } from '../guards/auth.guard';
-import { ApiTags, ApiOperation, ApiQuery, ApiParam } from '@nestjs/swagger';
+import {
+  ApiTags,
+  ApiOperation,
+  ApiQuery,
+  ApiParam,
+  ApiBody,
+} from '@nestjs/swagger';
 
 @ApiTags('Article')
 @Controller('articles')
@@ -35,5 +50,19 @@ export class ArticlesController {
   @Get('/:id')
   async getArticleById(@Param('id') id: string) {
     return this.articlesService.getArticleById(id);
+  }
+
+  @ApiBody({
+    schema: {
+      properties: {
+        articleId: { type: 'string', example: '1' },
+      },
+    },
+  })
+  @ApiOperation({ summary: '아티클 북마크 요청' })
+  @Post('/bookmark')
+  @UseGuards(AuthGuard)
+  async bookmarkArticle(@Body('articleId') articleId: string, @Req() req: any) {
+    return this.articlesService.bookmarkArticle(articleId, req.user.id);
   }
 }
