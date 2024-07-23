@@ -24,6 +24,7 @@ model User {
   interests         InterestsOnUsers[]
   newsletters       NewslettersOnUsers[]
   articles          Article[]
+  bookmarks         Bookmark[]
 }
 
 model Newsletter {
@@ -63,6 +64,7 @@ model Article {
   userId       Int
   newsletter   Newsletter @relation(fields: [newsletterId], references: [id])
   newsletterId Int
+  bookmarks    Bookmark[]
 }
 
 model Industry {
@@ -106,3 +108,13 @@ model InterestsOnUsers {
   @@id([userId, interestId])
 }
 
+model Bookmark {
+  user         User       @relation(fields: [userId], references: [id])
+  userId       Int
+  article      Article    @relation(fields: [articleId], references: [id])
+  articleId    Int
+  isDeleted    Boolean    @default(false)
+  createdAt    DateTime   @default(now())
+
+  @@id([userId, articleId])
+}
