@@ -2,6 +2,7 @@ import { Injectable } from '@nestjs/common';
 import { PrismaService } from '../prisma.service';
 import { simpleParser } from 'mailparser';
 import Pop3Command from 'node-pop3';
+import { parse } from 'node-html-parser';
 
 @Injectable()
 export class ArticlesService {
@@ -56,7 +57,8 @@ export class ArticlesService {
         const kstDate = new Date(utcDate.getTime() + KR_TIME_DIFF);
         const stringifyHTML = parsedEmail.html as string;
 
-        await this.prisma.article.create({
+        // 아티클 생성
+        const article = await this.prisma.article.create({
           data: {
             title: parsedEmail.subject,
             body: stringifyHTML
@@ -67,6 +69,16 @@ export class ArticlesService {
             publishDate: kstDate.getUTCDate(),
             userId: user.id,
             newsletterId: newsletter.id,
+          },
+        });
+        // 본문 미리보기 텍스트 추출 후, 아티클 업데이트
+        const firstTwoBody = await this.extractTwoSentenceOfArticle(article.id);
+        await this.prisma.article.update({
+          where: {
+            id: article.id,
+          },
+          data: {
+            firstTwoBody,
           },
         });
         // 수신한 아티클 뉴스레터 구독 여부 판단
@@ -183,6 +195,7 @@ export class ArticlesService {
       brandId: article.newsletter.id,
       brandName: article.newsletter.brandName,
       articleHTML: article.body,
+      brandImageUrl: article.newsletter.imageUrl,
     };
     return data;
   }
@@ -219,5 +232,45 @@ export class ArticlesService {
     });
 
     return user._count.articles;
+  }
+
+  // 아티클 미리보기 본문 추출
+  async extractTwoSentenceOfArticle(articleId: number) {
+    const article = await this.prisma.article.findUnique({
+      where: {
+        id: articleId,
+      },
+      select: {
+        id: true,
+        body: true,
+      },
+    });
+
+    const root = parse(article.body);
+
+    const selectedElements = root.querySelectorAll(
+      '.stb-fore-colored, .stb-bold',
+    );
+    const elements =
+      selectedElements.length === 0
+        ? root.getElementsByTagName('*')
+        : selectedElements;
+
+    const filteredElements = elements.filter((element) => {
+      const style = element.getAttribute('style');
+      const hasColorStyle = style && style.includes('color');
+      const isBlackText = style && style.includes('color: #000000;');
+
+      const hasHref = element.getAttribute('href');
+
+      const isValidText =
+        /[가-힣]/.test(element.text) && element.text.length > 10;
+
+      return !hasHref && (!hasColorStyle || isBlackText) && isValidText;
+    });
+
+    return filteredElements.length > 2
+      ? filteredElements[1].text + ' ' + filteredElements[2].text
+      : filteredElements[0]?.text;
   }
 }

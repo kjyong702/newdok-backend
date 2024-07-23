@@ -54,6 +54,7 @@ model Article {
   id           Int        @id @default(autoincrement())
   title        String
   body         String     @db.LongText
+  firstTwoBody String?    @db.LongText
   date         DateTime
   publishDate  Int
   publishMonth Int

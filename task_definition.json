@@ -3,7 +3,6 @@
   "containerDefinitions": [
     {
       "name": "newdok",
-      "image": "866401402898.dkr.ecr.ap-northeast-2.amazonaws.com/newdok:c39bb0702a3e1dec77498287188c747e02f75553",
       "cpu": 0,
       "portMappings": [
         {
@@ -33,20 +32,16 @@
           "valueFrom": "arn:aws:secretsmanager:ap-northeast-2:866401402898:secret:newdok-secrets-q73CJ5:JWT_SECRET_KEY::"
         },
         {
-          "name": "NCP_ACCESS_KEY",
-          "valueFrom": "arn:aws:secretsmanager:ap-northeast-2:866401402898:secret:newdok-secrets-q73CJ5:NCP_ACCESS_KEY::"
+          "name": "TWILIO_ACCOUNT_SID",
+          "valueFrom": "arn:aws:secretsmanager:ap-northeast-2:866401402898:secret:newdok-secrets-q73CJ5:TWILIO_ACCOUNT_SID::"
         },
         {
-          "name": "NCP_FROM_NUMBER",
-          "valueFrom": "arn:aws:secretsmanager:ap-northeast-2:866401402898:secret:newdok-secrets-q73CJ5:NCP_FROM_NUMBER::"
+          "name": "TWILIO_AUTH_TOKEN",
+          "valueFrom": "arn:aws:secretsmanager:ap-northeast-2:866401402898:secret:newdok-secrets-q73CJ5:TWILIO_AUTH_TOKEN::"
         },
         {
-          "name": "NCP_SECRET_KEY",
-          "valueFrom": "arn:aws:secretsmanager:ap-northeast-2:866401402898:secret:newdok-secrets-q73CJ5:NCP_SECRET_KEY::"
-        },
-        {
-          "name": "NCP_SERVICE_ID",
-          "valueFrom": "arn:aws:secretsmanager:ap-northeast-2:866401402898:secret:newdok-secrets-q73CJ5:NCP_SERVICE_ID::"
+          "name": "TWILIO_MESSAGING_SERVICE_SID",
+          "valueFrom": "arn:aws:secretsmanager:ap-northeast-2:866401402898:secret:newdok-secrets-q73CJ5:TWILIO_MESSAGING_SERVICE_SID::"
         }
       ],
       "logConfiguration": {

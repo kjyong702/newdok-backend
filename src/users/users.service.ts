@@ -240,6 +240,9 @@ export class UsersService {
           loginId,
         },
       });
+      if (!user) {
+        throw new BadRequestException('가입되지 않은 아이디입니다');
+      }
       const isValid = await bcrypt.compare(prevPassword, user.password);
       if (!isValid) {
         throw new BadRequestException('현재 비밀번호가 일치하지 않습니다');
