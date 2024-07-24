@@ -57,8 +57,9 @@ model Article {
   body         String     @db.LongText
   firstTwoBody String?    @db.LongText
   date         DateTime
-  publishDate  Int
+  publishYear  Int
   publishMonth Int
+  publishDate  Int
   status       String     @default("Unread")
   user         User       @relation(fields: [userId], references: [id])
   userId       Int
