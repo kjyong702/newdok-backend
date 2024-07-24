@@ -65,6 +65,7 @@ export class ArticlesService {
               .replace(/"/g, '"')
               .replace(/\n/g, '\n') as string,
             date: utcDate,
+            publishYear: kstDate.getUTCFullYear(),
             publishMonth: kstDate.getUTCMonth() + 1,
             publishDate: kstDate.getUTCDate(),
             userId: user.id,
