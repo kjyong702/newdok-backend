@@ -115,7 +115,6 @@ model Bookmark {
   userId       Int
   article      Article    @relation(fields: [articleId], references: [id])
   articleId    Int
-  isDeleted    Boolean    @default(false)
   createdAt    DateTime   @default(now())
 
   @@id([userId, articleId])
