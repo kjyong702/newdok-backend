@@ -59,7 +59,11 @@ export class ArticlesController {
       },
     },
   })
-  @ApiOperation({ summary: '아티클 북마크 요청' })
+  @ApiOperation({
+    summary: '아티클 북마크 요청/취소',
+    description:
+      '현재 북마크 중인 아티클은 취소, 현재 북마크 중이 아닌 아티클은 요청 작업 수행',
+  })
   @Post('/bookmark')
   @UseGuards(AuthGuard)
   async bookmarkArticle(@Body('articleId') articleId: string, @Req() req: any) {

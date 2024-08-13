@@ -275,7 +275,7 @@ export class ArticlesService {
       : filteredElements[0]?.text;
   }
 
-  // 아티클 북마크 요청/삭제
+  // 아티클 북마크 요청/취소
   async bookmarkArticle(articleId: string, userId: number) {
     const isBookmarked = await this.prisma.bookmark.findUnique({
       where: {
