@@ -285,22 +285,38 @@ export class ArticlesService {
         },
       },
     });
-    const result = isBookmarked
-      ? await this.prisma.bookmark.delete({
-          where: {
-            userId_articleId: {
-              userId,
-              articleId: parseInt(articleId),
-            },
-          },
-        })
-      : await this.prisma.bookmark.create({
-          data: {
+    if (isBookmarked) {
+      await this.prisma.bookmark.delete({
+        where: {
+          userId_articleId: {
             userId,
             articleId: parseInt(articleId),
           },
-        });
-
-    return result;
+        },
+      });
+      await this.prisma.article.update({
+        where: {
+          id: parseInt(articleId),
+        },
+        data: {
+          isBookmarked: false,
+        },
+      });
+    } else {
+      await this.prisma.bookmark.create({
+        data: {
+          userId,
+          articleId: parseInt(articleId),
+        },
+      });
+      await this.prisma.article.update({
+        where: {
+          id: parseInt(articleId),
+        },
+        data: {
+          isBookmarked: true,
+        },
+      });
+    }
   }
 }
