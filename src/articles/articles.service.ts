@@ -319,4 +319,46 @@ export class ArticlesService {
       });
     }
   }
+
+  async getUserBookmarkedInterests(userId: number) {
+    const bookmarks = await this.prisma.bookmark.findMany({
+      where: {
+        userId,
+      },
+    });
+    const userBookmarkedArticleIds = bookmarks.map((bookmark) => {
+      return bookmark.articleId;
+    });
+
+    let userBookmarkedInterestIds: number[] = [];
+    const promises = userBookmarkedArticleIds.map(async (articleId) => {
+      const article = await this.prisma.article.findUnique({
+        where: {
+          id: articleId,
+        },
+        select: {
+          id: true,
+          newsletter: {
+            select: {
+              interests: {
+                orderBy: {
+                  id: 'asc',
+                },
+              },
+            },
+          },
+        },
+      });
+      article.newsletter.interests.forEach((interest) => {
+        userBookmarkedInterestIds.push(interest.id);
+      });
+    });
+    await Promise.all(promises);
+
+    userBookmarkedInterestIds = [...new Set(userBookmarkedInterestIds)].sort(
+      (a, b) => a - b,
+    );
+
+    return userBookmarkedInterestIds;
+  }
 }
