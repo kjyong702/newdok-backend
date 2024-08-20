@@ -93,9 +93,4 @@ export class ArticlesController {
   async getArticleById(@Param('id') id: string) {
     return this.articlesService.getArticleById(id);
   }
-
-  @Get('/tt/tt/test')
-  async testFun() {
-    return this.articlesService.testFun();
-  }
 }

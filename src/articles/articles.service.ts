@@ -275,7 +275,7 @@ export class ArticlesService {
       : filteredElements[0]?.text;
   }
 
-  // 아티클 북마크 요청/취소
+  // 아티클 북마크 요청 및 취소
   async bookmarkArticle(articleId: string, userId: number) {
     const isBookmarked = await this.prisma.bookmark.findUnique({
       where: {
@@ -320,18 +320,20 @@ export class ArticlesService {
     }
   }
 
+  // 북마크한 아티클 관심사 조회
   async getUserBookmarkedInterests(userId: number) {
+    let bookmarkedInterestIds = [];
+
     const bookmarks = await this.prisma.bookmark.findMany({
       where: {
         userId,
       },
     });
-    const userBookmarkedArticleIds = bookmarks.map((bookmark) => {
+    const bookmarkedArticleIds = bookmarks.map((bookmark) => {
       return bookmark.articleId;
     });
 
-    let userBookmarkedInterestIds: number[] = [];
-    const promises = userBookmarkedArticleIds.map(async (articleId) => {
+    const promises = bookmarkedArticleIds.map(async (articleId) => {
       const article = await this.prisma.article.findUnique({
         where: {
           id: articleId,
@@ -350,18 +352,25 @@ export class ArticlesService {
         },
       });
       article.newsletter.interests.forEach((interest) => {
-        userBookmarkedInterestIds.push(interest.id);
+        bookmarkedInterestIds.push({
+          id: interest.id,
+          name: interest.name,
+        });
       });
     });
     await Promise.all(promises);
 
-    userBookmarkedInterestIds = [...new Set(userBookmarkedInterestIds)].sort(
-      (a, b) => a - b,
-    );
+    // 관심사 id를 기준으로 중복 제거 후, 오름차순 정렬
+    bookmarkedInterestIds = [
+      ...new Map(
+        bookmarkedInterestIds.map((interest) => [interest.id, interest]),
+      ).values(),
+    ].sort((a, b) => a.id - b.id);
 
-    return userBookmarkedInterestIds;
+    return bookmarkedInterestIds;
   }
 
+  // 북마크한 아티클 조회
   async getBookmarkedArticles(interestId: string, userId: number) {
     let bookmarkedArticlesForInterest = [];
 
@@ -448,20 +457,5 @@ export class ArticlesService {
         bookmarkForMonth: bookmarkedArticlesGroupedByAndSorted,
       },
     };
-  }
-
-  async testFun() {
-    const articles = await this.prisma.article.findMany({
-      where: {
-        userId: 91,
-        publishYear: 2024,
-        publishMonth: 7,
-      },
-      select: {
-        id: true,
-        date: true,
-      },
-    });
-    return articles;
   }
 }
