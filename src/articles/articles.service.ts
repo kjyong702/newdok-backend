@@ -361,4 +361,107 @@ export class ArticlesService {
 
     return userBookmarkedInterestIds;
   }
+
+  async getBookmarkedArticles(interestId: string, userId: number) {
+    let bookmarkedArticlesForInterest = [];
+
+    const bookmark = await this.prisma.bookmark.findMany({
+      where: {
+        userId,
+      },
+      select: {
+        article: {
+          select: {
+            id: true,
+            title: true,
+            firstTwoBody: true,
+            date: true,
+            newsletter: {
+              select: {
+                id: true,
+                brandName: true,
+                imageUrl: true,
+                interests: {
+                  select: {
+                    id: true,
+                  },
+                  orderBy: {
+                    id: 'asc',
+                  },
+                },
+              },
+            },
+          },
+        },
+      },
+    });
+
+    // 선택된 관심사 id가 있으면 필터링, 없으면 전체 선택
+    bookmarkedArticlesForInterest = !interestId
+      ? bookmark
+      : (bookmarkedArticlesForInterest = bookmark.filter((data) => {
+          return data.article.newsletter.interests.some(
+            (interest) => interest.id === parseInt(interestId),
+          );
+        }));
+
+    // 북마크 아티클 월별 그룹화
+    const bookmarkedArticlesGroupedByMonth = {};
+
+    for (const item of bookmarkedArticlesForInterest) {
+      const date = new Date(item.article.date);
+      const yearMonth = `${date.getFullYear()}-${String(
+        date.getMonth() + 1,
+      ).padStart(2, '0')}`;
+
+      if (!bookmarkedArticlesGroupedByMonth[yearMonth]) {
+        bookmarkedArticlesGroupedByMonth[yearMonth] = [];
+      }
+      bookmarkedArticlesGroupedByMonth[yearMonth].push({
+        brandName: item.article.newsletter.brandName,
+        brandId: item.article.newsletter.id,
+        articleTitle: item.article.title,
+        articleId: item.article.id,
+        sampleText: item.article.firstTwoBody,
+        date: item.article.date,
+        imageURL: item.article.newsletter.imageUrl,
+      });
+    }
+
+    // 월별 내림차순 정렬
+    const bookmarkedArticlesGroupedByAndSorted = [];
+    const sortedKeys = Object.keys(bookmarkedArticlesGroupedByMonth).sort(
+      (a, b) => (a < b ? 1 : -1),
+    );
+
+    for (const key of sortedKeys) {
+      const [year, month] = key.split('-');
+      bookmarkedArticlesGroupedByAndSorted.push({
+        month: `${year}년 ${month}월`,
+        bookmark: bookmarkedArticlesGroupedByMonth[key],
+      });
+    }
+
+    return {
+      data: {
+        totalAmount: bookmarkedArticlesForInterest.length,
+        bookmarkForMonth: bookmarkedArticlesGroupedByAndSorted,
+      },
+    };
+  }
+
+  async testFun() {
+    const articles = await this.prisma.article.findMany({
+      where: {
+        userId: 91,
+        publishYear: 2024,
+        publishMonth: 7,
+      },
+      select: {
+        id: true,
+        date: true,
+      },
+    });
+    return articles;
+  }
 }
