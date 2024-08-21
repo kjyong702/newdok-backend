@@ -24,21 +24,35 @@ export class ArticlesController {
   constructor(private articlesService: ArticlesService) {}
 
   @ApiQuery({
+    name: 'year',
+    description: '아티클 발행연도',
+    example: 2024,
+  })
+  @ApiQuery({
     name: 'publicationMonth',
-    description: '아티클 수신 날짜(월)',
+    description: '아티클 발행월',
     example: 1,
   })
-  @ApiOperation({ summary: '월별 아티클 조회' })
+  @ApiOperation({ summary: '날짜별 아티클 조회' })
   @Get('')
   @UseGuards(AuthGuard)
-  async getArticlesForMonth(
+  async getArticlesByDate(
+    @Query('year') year: string,
     @Query('publicationMonth') publicationMonth: string,
     @Req() req: any,
   ) {
-    return this.articlesService.getArticlesForMonth(
+    return this.articlesService.getArticlesByDate(
+      year,
       publicationMonth,
       req.user.id,
     );
+  }
+
+  @ApiOperation({ summary: '오늘 날짜 아티클 조회' })
+  @Get('/today')
+  @UseGuards(AuthGuard)
+  async getTodayArticles(@Req() req: any) {
+    return this.articlesService.getTodayArticles(req.user.id);
   }
 
   @ApiQuery({

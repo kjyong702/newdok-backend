@@ -120,17 +120,18 @@ export class ArticlesService {
     }
   }
 
-  // 월 단위 수신 아티클 반환
-  async getArticlesForMonth(publicationMonth: string, userId: number) {
+  // 날짜별 아티클 조회
+  async getArticlesByDate(
+    year: string,
+    publicationMonth: string,
+    userId: number,
+  ) {
     const articles = await this.prisma.article.findMany({
       where: {
         AND: [
-          {
-            userId,
-          },
-          {
-            publishMonth: parseInt(publicationMonth),
-          },
+          { publishYear: parseInt(year) },
+          { publishMonth: parseInt(publicationMonth) },
+          { userId },
         ],
       },
       select: {
@@ -147,16 +148,16 @@ export class ArticlesService {
       },
     });
 
-    const articlesForMonth = [];
-    const articlesForDate = [];
-    const numOfUnReadArticlesForDate = [];
+    // 날짜별 아티클 그룹화
+    const articlesGroupedByDate = Array(31)
+      .fill(null)
+      .map(() => ({
+        receivedUnread: 0,
+        receivedArticleList: [],
+      }));
 
-    for (let i = 0; i < 31; i++) {
-      articlesForDate[i] = [];
-      numOfUnReadArticlesForDate[i] = 0;
-    }
     articles.forEach((article) => {
-      articlesForDate[article.publishDate - 1].push({
+      articlesGroupedByDate[article.publishDate - 1].receivedArticleList.push({
         brandName: article.newsletter.brandName,
         imageUrl: article.newsletter.imageUrl,
         articleTitle: article.title,
@@ -164,17 +165,48 @@ export class ArticlesService {
         status: article.status,
       });
       if (article.status === 'Unread')
-        numOfUnReadArticlesForDate[article.publishDate - 1]++;
+        articlesGroupedByDate[article.publishDate - 1].receivedUnread++;
     });
-    for (let i = 0; i < 31; i++) {
-      articlesForMonth.push({
-        publishDate: i + 1,
-        receivedUnread: numOfUnReadArticlesForDate[i],
-        receivedArticleList: articlesForDate[i],
-      });
-    }
 
-    return articlesForMonth;
+    return {
+      data: articlesGroupedByDate.map((data, index) => {
+        return {
+          publishDate: index + 1,
+          receivedUnread: data.receivedUnread,
+          receivedArticleList: data.receivedArticleList,
+        };
+      }),
+    };
+  }
+
+  // 오늘 날짜 아티클 조회
+  async getTodayArticles(userId: number) {
+    const todayDate = new Date();
+
+    const todayArticles = await this.prisma.article.findMany({
+      where: {
+        AND: [
+          { publishYear: todayDate.getFullYear() },
+          { publishMonth: todayDate.getMonth() + 1 },
+          { publishDate: todayDate.getDate() },
+          { userId },
+        ],
+      },
+      select: {
+        id: true,
+        title: true,
+        publishDate: true,
+        status: true,
+        newsletter: {
+          select: {
+            brandName: true,
+            imageUrl: true,
+          },
+        },
+      },
+    });
+
+    return todayArticles;
   }
 
   // 아티클 읽기
@@ -197,6 +229,7 @@ export class ArticlesService {
       brandName: article.newsletter.brandName,
       articleHTML: article.body,
       brandImageUrl: article.newsletter.imageUrl,
+      isBookmarked: article.isBookmarked,
     };
     return data;
   }
