@@ -197,6 +197,7 @@ export class ArticlesService {
       brandName: article.newsletter.brandName,
       articleHTML: article.body,
       brandImageUrl: article.newsletter.imageUrl,
+      isBookmarked: article.isBookmarked,
     };
     return data;
   }
