@@ -179,6 +179,36 @@ export class ArticlesService {
     };
   }
 
+  // 오늘 날짜 아티클 조회
+  async getTodayArticles(userId: number) {
+    const todayDate = new Date();
+
+    const todayArticles = await this.prisma.article.findMany({
+      where: {
+        AND: [
+          { publishYear: todayDate.getFullYear() },
+          { publishMonth: todayDate.getMonth() + 1 },
+          { publishDate: todayDate.getDate() },
+          { userId },
+        ],
+      },
+      select: {
+        id: true,
+        title: true,
+        publishDate: true,
+        status: true,
+        newsletter: {
+          select: {
+            brandName: true,
+            imageUrl: true,
+          },
+        },
+      },
+    });
+
+    return todayArticles;
+  }
+
   // 아티클 읽기
   async getArticleById(articleId: string) {
     const article = await this.prisma.article.update({

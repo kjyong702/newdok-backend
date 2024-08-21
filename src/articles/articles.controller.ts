@@ -48,6 +48,13 @@ export class ArticlesController {
     );
   }
 
+  @ApiOperation({ summary: '오늘 날짜 아티클 조회' })
+  @Get('/today')
+  @UseGuards(AuthGuard)
+  async getTodayArticles(@Req() req: any) {
+    return this.articlesService.getTodayArticles(req.user.id);
+  }
+
   @ApiQuery({
     name: 'interest',
     description: '관심사 id',
