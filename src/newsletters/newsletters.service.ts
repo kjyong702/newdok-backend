@@ -189,11 +189,7 @@ export class NewslettersService {
       subscribeUrl: newsletter.subscribeUrl,
       imageUrl: newsletter.imageUrl,
       brandArticleList: newsletter.articles,
-      isSubscribed: !isSubscribed
-        ? 'INITIAL'
-        : isSubscribed.status === 'CONFIRMED'
-        ? 'CONFIRMED'
-        : 'CHECK',
+      isSubscribed: !isSubscribed ? 'INITIAL' : isSubscribed.status,
       subscribeCheck: newsletter.doubleCheck,
     };
 
