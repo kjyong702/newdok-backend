@@ -1,4 +1,13 @@
-import { Controller, Get, Param, Query, Req, UseGuards } from '@nestjs/common';
+import {
+  Controller,
+  Get,
+  Patch,
+  Param,
+  Query,
+  Body,
+  Req,
+  UseGuards,
+} from '@nestjs/common';
 import { NewslettersService } from './newsletters.service';
 import { AuthGuard } from '../guards/auth.guard';
 import { ApiTags, ApiOperation, ApiQuery, ApiParam } from '@nestjs/swagger';
@@ -87,5 +96,19 @@ export class NewslettersController {
   @Get('/:id/non-member')
   async getNewsletterByIdForNonMember(@Param('id') brandId: string) {
     return this.newslettersService.getNewsletterByIdForNonMember(brandId);
+  }
+
+  // TODO: 뉴스레터 구독 관련 API 엔드포인트 변경
+
+  @Patch('/subscription/pause')
+  @UseGuards(AuthGuard)
+  async pauseUserNewsletterSubscription(
+    @Body('newsletterId') newsletterId: string,
+    @Req() req: any,
+  ) {
+    return this.newslettersService.pauseUserNewsletterSubscription(
+      newsletterId,
+      req.user.id,
+    );
   }
 }
