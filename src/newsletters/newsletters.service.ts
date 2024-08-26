@@ -295,12 +295,16 @@ export class NewslettersService {
 
       const newslettersSubscribed = [];
       arr1.forEach((newsletter) => {
+        // 구독 중인지 중지 상태인지 검사
+        const subscribeStatus = newsletter.users.find(
+          (user) => user.userId === userId,
+        ).status;
         newslettersSubscribed.push({
           brandId: newsletter.id,
           brandName: newsletter.brandName,
           imageUrl: newsletter.imageUrl,
           interests: newsletter.interests,
-          isSubscribed: 'CONFIRMED',
+          isSubscribed: subscribeStatus,
           shortDescription: newsletter.secondDescription,
           subscriptionCount: newsletter.users.length,
         });
@@ -383,18 +387,23 @@ export class NewslettersService {
           ],
         },
         include: {
+          users: true,
           interests: true,
         },
       });
 
       const newslettersSubscribed = [];
       arr1.forEach((newsletter) => {
+        // 구독 중인지 중지 상태인지 검사
+        const subscribeStatus = newsletter.users.find(
+          (user) => user.userId === userId,
+        ).status;
         newslettersSubscribed.push({
           brandId: newsletter.id,
           brandName: newsletter.brandName,
           imageUrl: newsletter.imageUrl,
           interests: newsletter.interests,
-          isSubscribed: 'CONFIRMED',
+          isSubscribed: subscribeStatus,
           shortDescription: newsletter.secondDescription,
           createdAt: newsletter.createdAt,
         });
