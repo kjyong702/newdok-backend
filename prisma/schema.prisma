@@ -96,7 +96,7 @@ model NewslettersOnUsers {
   newsletterId Int
   status       String
   createdAt    DateTime   @default(now())
-  updatedAt    DateTime   @updatedAt    
+  updatedAt    DateTime?  @updatedAt    
 
   @@id([userId, newsletterId])
 }
