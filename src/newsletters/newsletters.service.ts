@@ -576,4 +576,33 @@ export class NewslettersService {
       return data;
     }
   }
+
+  // 뉴스레터 구독 중지
+  async pauseUserNewsletterSubscription(newsletterId: string, userId: number) {
+    const isSubscribed = await this.prisma.newslettersOnUsers.findUnique({
+      where: {
+        userId_newsletterId: {
+          userId,
+          newsletterId: parseInt(newsletterId),
+        },
+      },
+    });
+    if (!isSubscribed || isSubscribed.status !== 'CONFIRMED') {
+      throw new BadRequestException('구독 중이 아닙니다');
+    }
+
+    const result = await this.prisma.newslettersOnUsers.update({
+      where: {
+        userId_newsletterId: {
+          userId,
+          newsletterId: parseInt(newsletterId),
+        },
+      },
+      data: {
+        status: 'PAUSED',
+      },
+    });
+
+    return result;
+  }
 }
