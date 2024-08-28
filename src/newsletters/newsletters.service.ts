@@ -588,7 +588,7 @@ export class NewslettersService {
       },
     });
     if (!isSubscribed || isSubscribed.status !== 'CONFIRMED') {
-      throw new BadRequestException('구독 중이 아닙니다');
+      throw new BadRequestException('구독 중인 뉴스레터가 아닙니다');
     }
 
     const result = await this.prisma.newslettersOnUsers.update({
@@ -600,6 +600,35 @@ export class NewslettersService {
       },
       data: {
         status: 'PAUSED',
+      },
+    });
+
+    return result;
+  }
+
+  // 뉴스레터 구독 재개
+  async resumeUserNewsletterSubscription(newsletterId: string, userId: number) {
+    const isSubscribed = await this.prisma.newslettersOnUsers.findUnique({
+      where: {
+        userId_newsletterId: {
+          userId,
+          newsletterId: parseInt(newsletterId),
+        },
+      },
+    });
+    if (!isSubscribed || isSubscribed.status !== 'PAUSED') {
+      throw new BadRequestException('구독 중지 중인 뉴스레터가 아닙니다');
+    }
+
+    const result = await this.prisma.newslettersOnUsers.update({
+      where: {
+        userId_newsletterId: {
+          userId,
+          newsletterId: parseInt(newsletterId),
+        },
+      },
+      data: {
+        status: 'CONFIRMED',
       },
     });
 

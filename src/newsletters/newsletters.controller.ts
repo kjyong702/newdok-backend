@@ -111,4 +111,16 @@ export class NewslettersController {
       req.user.id,
     );
   }
+
+  @Patch('/subscription/resume')
+  @UseGuards(AuthGuard)
+  async resumeUserNewsletterSubscription(
+    @Body('newsletterId') newsletterId: string,
+    @Req() req: any,
+  ) {
+    return this.newslettersService.resumeUserNewsletterSubscription(
+      newsletterId,
+      req.user.id,
+    );
+  }
 }
