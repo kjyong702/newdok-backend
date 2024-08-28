@@ -82,7 +82,7 @@ export class ArticlesService {
             firstTwoBody,
           },
         });
-        // 수신한 아티클 뉴스레터 구독 여부 판단
+        // 수신한 아티클 뉴스레터 구독 상태에 따른 처리
         const isSubscribed = await this.prisma.newslettersOnUsers.findUnique({
           where: {
             userId_newsletterId: {
@@ -101,7 +101,7 @@ export class ArticlesService {
             },
           });
         }
-        // 2. "구독 확인중" 뉴스레터인 경우
+        // 2. "구독 확인 중" 뉴스레터인 경우
         if (isSubscribed && isSubscribed.status === 'CHECK') {
           await this.prisma.newslettersOnUsers.update({
             where: {
@@ -112,6 +112,17 @@ export class ArticlesService {
             },
             data: {
               status: 'CONFIRMED',
+            },
+          });
+        }
+        // 3. "구독 중지 중" 뉴스레터인 경우
+        if (isSubscribed.status === 'PAUSED') {
+          await this.prisma.article.update({
+            where: {
+              id: article.id,
+            },
+            data: {
+              isVisible: false,
             },
           });
         }
