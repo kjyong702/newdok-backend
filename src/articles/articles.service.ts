@@ -140,6 +140,7 @@ export class ArticlesService {
     const articles = await this.prisma.article.findMany({
       where: {
         AND: [
+          { isVisible: true },
           { publishYear: parseInt(year) },
           { publishMonth: parseInt(publicationMonth) },
           { userId },
@@ -197,6 +198,7 @@ export class ArticlesService {
     const todayArticles = await this.prisma.article.findMany({
       where: {
         AND: [
+          { isVisible: true },
           { publishYear: todayDate.getFullYear() },
           { publishMonth: todayDate.getMonth() + 1 },
           { publishDate: todayDate.getDate() },
