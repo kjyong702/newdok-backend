@@ -189,11 +189,7 @@ export class NewslettersService {
       subscribeUrl: newsletter.subscribeUrl,
       imageUrl: newsletter.imageUrl,
       brandArticleList: newsletter.articles,
-      isSubscribed: !isSubscribed
-        ? 'INITIAL'
-        : isSubscribed.status === 'CONFIRMED'
-        ? 'CONFIRMED'
-        : 'CHECK',
+      isSubscribed: !isSubscribed ? 'INITIAL' : isSubscribed.status,
       subscribeCheck: newsletter.doubleCheck,
     };
 
@@ -299,12 +295,16 @@ export class NewslettersService {
 
       const newslettersSubscribed = [];
       arr1.forEach((newsletter) => {
+        // 구독 중인지 중지 상태인지 검사
+        const subscribeStatus = newsletter.users.find(
+          (user) => user.userId === userId,
+        ).status;
         newslettersSubscribed.push({
           brandId: newsletter.id,
           brandName: newsletter.brandName,
           imageUrl: newsletter.imageUrl,
           interests: newsletter.interests,
-          isSubscribed: 'CONFIRMED',
+          isSubscribed: subscribeStatus,
           shortDescription: newsletter.secondDescription,
           subscriptionCount: newsletter.users.length,
         });
@@ -387,18 +387,23 @@ export class NewslettersService {
           ],
         },
         include: {
+          users: true,
           interests: true,
         },
       });
 
       const newslettersSubscribed = [];
       arr1.forEach((newsletter) => {
+        // 구독 중인지 중지 상태인지 검사
+        const subscribeStatus = newsletter.users.find(
+          (user) => user.userId === userId,
+        ).status;
         newslettersSubscribed.push({
           brandId: newsletter.id,
           brandName: newsletter.brandName,
           imageUrl: newsletter.imageUrl,
           interests: newsletter.interests,
-          isSubscribed: 'CONFIRMED',
+          isSubscribed: subscribeStatus,
           shortDescription: newsletter.secondDescription,
           createdAt: newsletter.createdAt,
         });
@@ -570,5 +575,63 @@ export class NewslettersService {
       });
       return data;
     }
+  }
+
+  // 뉴스레터 구독 중지
+  async pauseUserNewsletterSubscription(newsletterId: string, userId: number) {
+    const isSubscribed = await this.prisma.newslettersOnUsers.findUnique({
+      where: {
+        userId_newsletterId: {
+          userId,
+          newsletterId: parseInt(newsletterId),
+        },
+      },
+    });
+    if (!isSubscribed || isSubscribed.status !== 'CONFIRMED') {
+      throw new BadRequestException('구독 중인 뉴스레터가 아닙니다');
+    }
+
+    const result = await this.prisma.newslettersOnUsers.update({
+      where: {
+        userId_newsletterId: {
+          userId,
+          newsletterId: parseInt(newsletterId),
+        },
+      },
+      data: {
+        status: 'PAUSED',
+      },
+    });
+
+    return result;
+  }
+
+  // 뉴스레터 구독 재개
+  async resumeUserNewsletterSubscription(newsletterId: string, userId: number) {
+    const isSubscribed = await this.prisma.newslettersOnUsers.findUnique({
+      where: {
+        userId_newsletterId: {
+          userId,
+          newsletterId: parseInt(newsletterId),
+        },
+      },
+    });
+    if (!isSubscribed || isSubscribed.status !== 'PAUSED') {
+      throw new BadRequestException('구독 중지 중인 뉴스레터가 아닙니다');
+    }
+
+    const result = await this.prisma.newslettersOnUsers.update({
+      where: {
+        userId_newsletterId: {
+          userId,
+          newsletterId: parseInt(newsletterId),
+        },
+      },
+      data: {
+        status: 'CONFIRMED',
+      },
+    });
+
+    return result;
   }
 }

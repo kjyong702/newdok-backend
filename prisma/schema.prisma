@@ -62,6 +62,7 @@ model Article {
   publishDate  Int
   status       String     @default("Unread")
   isBookmarked Boolean    @default(false)
+  isVisible    Boolean    @default(true)
   user         User       @relation(fields: [userId], references: [id])
   userId       Int
   newsletter   Newsletter @relation(fields: [newsletterId], references: [id])
@@ -96,6 +97,7 @@ model NewslettersOnUsers {
   newsletterId Int
   status       String
   createdAt    DateTime   @default(now())
+  updatedAt    DateTime?  @updatedAt    
 
   @@id([userId, newsletterId])
 }
