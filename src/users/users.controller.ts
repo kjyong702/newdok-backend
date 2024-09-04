@@ -104,22 +104,6 @@ export class UsersController {
     return this.usersService.getUsersByPhoneNumber(phoneNumber);
   }
 
-  @ApiOperation({ summary: '구독 중인 뉴스레터 조회' })
-  @ApiBearerAuth()
-  @UseGuards(AuthGuard)
-  @Get('mypage/subscription/active')
-  async getUserNewsletterSubscriptions(@Req() req: any) {
-    return this.usersService.getUserNewsletterSubscriptions(req.user.id);
-  }
-
-  @ApiOperation({ summary: '구독 중지 중인 뉴스레터 조회' })
-  @ApiBearerAuth()
-  @UseGuards(AuthGuard)
-  @Get('mypage/subscription/paused')
-  async getPausedUserNewsletterSubscriptions(@Req() req: any) {
-    return this.usersService.getPausedUserNewsletterSubscriptions(req.user.id);
-  }
-
   @ApiOperation({ summary: '구독 닉네임 변경' })
   @ApiBody({
     schema: {

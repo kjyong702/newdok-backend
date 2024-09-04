@@ -137,44 +137,6 @@ export class UsersService {
     return users;
   }
 
-  async getUserNewsletterSubscriptions(userId: number) {
-    const activeSubscribedNewsletters = await this.prisma.newsletter.findMany({
-      where: {
-        users: {
-          some: { AND: [{ userId }, { status: 'CONFIRMED' }] },
-        },
-      },
-      select: {
-        id: true,
-        brandName: true,
-        imageUrl: true,
-        publicationCycle: true,
-      },
-    });
-
-    return activeSubscribedNewsletters;
-  }
-
-  async getPausedUserNewsletterSubscriptions(userId: number) {
-    const pausedSubscribedNewsletters = await this.prisma.newsletter.findMany({
-      where: {
-        users: {
-          some: {
-            AND: [{ userId }, { status: 'PAUSED' }],
-          },
-        },
-      },
-      select: {
-        id: true,
-        brandName: true,
-        imageUrl: true,
-        publicationCycle: true,
-      },
-    });
-
-    return pausedSubscribedNewsletters;
-  }
-
   async changeNickname(newNickname: string, userId: number) {
     const updatedUser = await this.prisma.user.update({
       where: {

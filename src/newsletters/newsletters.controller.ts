@@ -107,6 +107,25 @@ export class NewslettersController {
     return this.newslettersService.getNewsletterByIdForNonMember(brandId);
   }
 
+  @ApiOperation({ summary: '구독 중인 뉴스레터 조회' })
+  @ApiBearerAuth()
+  @UseGuards(AuthGuard)
+  @Get('/subscription/active')
+  async getUserNewsletterSubscriptions(@Req() req: any) {
+    return this.newslettersService.getUserNewsletterSubscriptions(req.user.id);
+  }
+
+  @ApiOperation({ summary: '구독 중지 중인 뉴스레터 조회' })
+  @ApiBearerAuth()
+  @UseGuards(AuthGuard)
+  @Get('/subscription/paused')
+  async getPausedUserNewsletterSubscriptions(@Req() req: any) {
+    return this.newslettersService.getPausedUserNewsletterSubscriptions(
+      req.user.id,
+    );
+  }
+
+  @ApiOperation({ summary: '뉴스레터 구독 중지' })
   @ApiBearerAuth()
   @UseGuards(AuthGuard)
   @Patch('/subscription/pause')
@@ -120,6 +139,7 @@ export class NewslettersController {
     );
   }
 
+  @ApiOperation({ summary: '뉴스레터 구독 재개' })
   @ApiBearerAuth()
   @UseGuards(AuthGuard)
   @Patch('/subscription/resume')

@@ -577,6 +577,46 @@ export class NewslettersService {
     }
   }
 
+  // 구독 중인 뉴스레터 조회
+  async getUserNewsletterSubscriptions(userId: number) {
+    const activeSubscribedNewsletters = await this.prisma.newsletter.findMany({
+      where: {
+        users: {
+          some: { AND: [{ userId }, { status: 'CONFIRMED' }] },
+        },
+      },
+      select: {
+        id: true,
+        brandName: true,
+        imageUrl: true,
+        publicationCycle: true,
+      },
+    });
+
+    return activeSubscribedNewsletters;
+  }
+
+  // 구독 중지 중인 뉴스레터 조회
+  async getPausedUserNewsletterSubscriptions(userId: number) {
+    const pausedSubscribedNewsletters = await this.prisma.newsletter.findMany({
+      where: {
+        users: {
+          some: {
+            AND: [{ userId }, { status: 'PAUSED' }],
+          },
+        },
+      },
+      select: {
+        id: true,
+        brandName: true,
+        imageUrl: true,
+        publicationCycle: true,
+      },
+    });
+
+    return pausedSubscribedNewsletters;
+  }
+
   // 뉴스레터 구독 중지
   async pauseUserNewsletterSubscription(newsletterId: string, userId: number) {
     const isSubscribed = await this.prisma.newslettersOnUsers.findUnique({
