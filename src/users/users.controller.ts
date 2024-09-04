@@ -11,7 +11,13 @@ import {
 import { UsersService } from './users.service';
 import { CreateUserDto } from './dtos/create-user.dto';
 import { AuthGuard } from '../guards/auth.guard';
-import { ApiTags, ApiOperation, ApiBody, ApiQuery } from '@nestjs/swagger';
+import {
+  ApiTags,
+  ApiOperation,
+  ApiBody,
+  ApiQuery,
+  ApiBearerAuth,
+} from '@nestjs/swagger';
 
 @ApiTags('User')
 @Controller('users')
@@ -55,8 +61,9 @@ export class UsersController {
     description: '관심사 id',
     example: 1,
   })
-  @Get('/preInvestigate')
+  @ApiBearerAuth()
   @UseGuards(AuthGuard)
+  @Get('/preInvestigate')
   async preInvestigate(
     @Query('industry') industryId: string,
     @Query('interest') interestIds: string[],
@@ -97,20 +104,6 @@ export class UsersController {
     return this.usersService.getUsersByPhoneNumber(phoneNumber);
   }
 
-  @ApiOperation({ summary: '구독 중인 뉴스레터 조회' })
-  @UseGuards(AuthGuard)
-  @Get('mypage/subscription/active')
-  async getUserNewsletterSubscriptions(@Req() req: any) {
-    return this.usersService.getUserNewsletterSubscriptions(req.user.id);
-  }
-
-  @ApiOperation({ summary: '구독 중지 중인 뉴스레터 조회' })
-  @UseGuards(AuthGuard)
-  @Get('mypage/subscription/paused')
-  async getPausedUserNewsletterSubscriptions(@Req() req: any) {
-    return this.usersService.getPausedUserNewsletterSubscriptions(req.user.id);
-  }
-
   @ApiOperation({ summary: '구독 닉네임 변경' })
   @ApiBody({
     schema: {
@@ -119,6 +112,7 @@ export class UsersController {
       },
     },
   })
+  @ApiBearerAuth()
   @UseGuards(AuthGuard)
   @Patch('mypage/nickname')
   async changeNickname(@Body('nickname') nickname: string, @Req() req: any) {
@@ -133,6 +127,7 @@ export class UsersController {
       },
     },
   })
+  @ApiBearerAuth()
   @UseGuards(AuthGuard)
   @Patch('mypage/industry')
   async changeIndustry(
@@ -154,6 +149,7 @@ export class UsersController {
       },
     },
   })
+  @ApiBearerAuth()
   @UseGuards(AuthGuard)
   @Patch('mypage/interest')
   async changeInterest(
@@ -171,6 +167,7 @@ export class UsersController {
       },
     },
   })
+  @ApiBearerAuth()
   @UseGuards(AuthGuard)
   @Patch('mypage/phoneNumber')
   async changePhoneNumber(

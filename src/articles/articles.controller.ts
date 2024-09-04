@@ -16,6 +16,7 @@ import {
   ApiQuery,
   ApiParam,
   ApiBody,
+  ApiBearerAuth,
 } from '@nestjs/swagger';
 
 @ApiTags('Article')
@@ -34,8 +35,9 @@ export class ArticlesController {
     example: 1,
   })
   @ApiOperation({ summary: '날짜별 아티클 조회' })
-  @Get('')
+  @ApiBearerAuth()
   @UseGuards(AuthGuard)
+  @Get('')
   async getArticlesByDate(
     @Query('year') year: string,
     @Query('publicationMonth') publicationMonth: string,
@@ -49,8 +51,9 @@ export class ArticlesController {
   }
 
   @ApiOperation({ summary: '오늘 날짜 아티클 조회' })
-  @Get('/today')
+  @ApiBearerAuth()
   @UseGuards(AuthGuard)
+  @Get('/today')
   async getTodayArticles(@Req() req: any) {
     return this.articlesService.getTodayArticles(req.user.id);
   }
@@ -61,8 +64,9 @@ export class ArticlesController {
     example: 1,
   })
   @ApiOperation({ summary: '북마크한 아티클 조회' })
-  @Get('/bookmark')
+  @ApiBearerAuth()
   @UseGuards(AuthGuard)
+  @Get('/bookmark')
   async getBookmarkedArticles(
     @Query('interest') interestId: string,
     @Req() req: any,
@@ -82,8 +86,9 @@ export class ArticlesController {
     description:
       '현재 북마크 중인 아티클은 취소, 현재 북마크 중이 아닌 아티클은 요청 작업 수행',
   })
-  @Post('/bookmark')
+  @ApiBearerAuth()
   @UseGuards(AuthGuard)
+  @Post('/bookmark')
   async bookmarkArticle(@Body('articleId') articleId: string, @Req() req: any) {
     return this.articlesService.bookmarkArticle(articleId, req.user.id);
   }
@@ -92,11 +97,13 @@ export class ArticlesController {
     summary: '북마크한 관심사 조회',
     description: '유저가 북마크한 아티클의 관심사 리스트를 id 값으로 반환',
   })
-  @Get('/bookmark/interest')
+  @ApiBearerAuth()
   @UseGuards(AuthGuard)
+  @Get('/bookmark/interest')
   async getUserBookmarkedInterests(@Req() req: any) {
     return this.articlesService.getUserBookmarkedInterests(req.user.id);
   }
+
   @ApiParam({
     name: 'id',
     description: '아티클 id',
