@@ -643,7 +643,11 @@ export class NewslettersService {
       },
     });
 
-    return result;
+    return {
+      userId: result.userId,
+      newsletterId: result.newsletterId,
+      status: result.status,
+    };
   }
 
   // 뉴스레터 구독 재개
@@ -672,6 +676,10 @@ export class NewslettersService {
       },
     });
 
-    return result;
+    return {
+      userId: result.userId,
+      newsletterId: result.newsletterId,
+      status: result.status,
+    };
   }
 }
