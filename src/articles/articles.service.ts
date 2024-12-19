@@ -504,4 +504,6 @@ export class ArticlesService {
       },
     };
   }
+
+  async searchArticles(keyword: string, userId: number) {}
 }

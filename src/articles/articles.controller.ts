@@ -239,6 +239,12 @@ export class ArticlesController {
     return this.articlesService.getUserBookmarkedInterests(req.user.id);
   }
 
+  @Get('/search')
+  @UseGuards(AuthGuard)
+  async searchArticles(@Query('keyword') keyword: string, @Req() req: any) {
+    return this.articlesService.searchArticles(keyword, req.user.id);
+  }
+
   @ApiOperation({
     summary: '아티클 읽기',
     description: '특정 id 값을 기반으로 아티클을 조회합니다.',
