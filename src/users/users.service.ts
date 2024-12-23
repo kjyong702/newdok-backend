@@ -42,7 +42,18 @@ export class UsersService {
     });
     const accessToken = await this.jwtService.signAsync({ id: user.id });
 
-    return { user, accessToken };
+    return {
+      user: {
+        id: user.id,
+        loginId: user.loginId,
+        phoneNumber: user.phoneNumber,
+        nickname: user.nickname,
+        birthYear: user.birthYear,
+        gender: user.gender,
+        createdAt: user.createdAt,
+      },
+      accessToken,
+    };
   }
 
   async login(loginId: string, password: string) {
@@ -63,8 +74,21 @@ export class UsersService {
     }
 
     const accessToken = await this.jwtService.signAsync({ id: user.id });
-
-    return { user, accessToken };
+    return {
+      user: {
+        id: user.id,
+        loginId: user.loginId,
+        phoneNumber: user.phoneNumber,
+        subscribeEmail: user.subscribeEmail,
+        nickname: user.nickname,
+        birthYear: user.birthYear,
+        gender: user.gender,
+        createdAt: user.createdAt,
+        industryId: user.industryId,
+        interests: user.interests,
+      },
+      accessToken,
+    };
   }
 
   async preInvestigate(
@@ -119,6 +143,12 @@ export class UsersService {
   async getUserByLoginId(loginId: string) {
     const user = await this.prisma.user.findUnique({
       where: { loginId },
+      select: {
+        id: true,
+        loginId: true,
+        phoneNumber: true,
+        createdAt: true,
+      },
     });
     if (!user) {
       throw new BadRequestException('가입되지 않은 아이디입니다');
@@ -130,6 +160,12 @@ export class UsersService {
   async getUsersByPhoneNumber(phoneNumber: string) {
     const users = await this.prisma.user.findMany({
       where: { phoneNumber },
+      select: {
+        id: true,
+        loginId: true,
+        phoneNumber: true,
+        createdAt: true,
+      },
     });
     if (users.length === 0) {
       throw new BadRequestException('가입되지 않은 휴대폰 번호입니다');
@@ -137,23 +173,6 @@ export class UsersService {
     return users;
   }
 
-  async getSubscriptionListOfUser(userId: number) {
-    const subscribedNewsletters = await this.prisma.newsletter.findMany({
-      where: {
-        users: {
-          some: { AND: [{ userId }, { status: 'CONFIRMED' }] },
-        },
-      },
-      select: {
-        id: true,
-        brandName: true,
-        imageUrl: true,
-        publicationCycle: true,
-      },
-    });
-
-    return subscribedNewsletters;
-  }
   async changeNickname(newNickname: string, userId: number) {
     const updatedUser = await this.prisma.user.update({
       where: {
@@ -161,6 +180,11 @@ export class UsersService {
       },
       data: {
         nickname: newNickname,
+      },
+      select: {
+        id: true,
+        loginId: true,
+        nickname: true,
       },
     });
 
@@ -179,8 +203,10 @@ export class UsersService {
           },
         },
       },
-      include: {
-        interests: true,
+      select: {
+        id: true,
+        loginId: true,
+        industryId: true,
       },
     });
 
@@ -207,7 +233,9 @@ export class UsersService {
       where: {
         id: userId,
       },
-      include: {
+      select: {
+        id: true,
+        loginId: true,
         interests: true,
       },
     });
@@ -222,6 +250,11 @@ export class UsersService {
       },
       data: {
         phoneNumber: newPhoneNumber,
+      },
+      select: {
+        id: true,
+        loginId: true,
+        phoneNumber: true,
       },
     });
 
@@ -240,6 +273,9 @@ export class UsersService {
           loginId,
         },
       });
+      if (!user) {
+        throw new BadRequestException('가입되지 않은 아이디입니다');
+      }
       const isValid = await bcrypt.compare(prevPassword, user.password);
       if (!isValid) {
         throw new BadRequestException('현재 비밀번호가 일치하지 않습니다');
@@ -253,6 +289,10 @@ export class UsersService {
       },
       data: {
         password: newHashedPassword,
+      },
+      select: {
+        id: true,
+        loginId: true,
       },
     });
 
