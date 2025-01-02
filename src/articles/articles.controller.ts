@@ -240,9 +240,8 @@ export class ArticlesController {
   }
 
   @Get('/search')
-  @UseGuards(AuthGuard)
-  async searchArticles(@Query('keyword') keyword: string, @Req() req: any) {
-    return this.articlesService.searchArticles(keyword, req.user.id);
+  async searchArticles(@Query('keyword') keyword: string) {
+    return this.articlesService.searchArticles(keyword);
   }
 
   @ApiOperation({
