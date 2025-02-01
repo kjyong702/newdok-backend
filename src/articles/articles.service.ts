@@ -56,6 +56,10 @@ export class ArticlesService {
         const utcDate = new Date(parsedEmail.date);
         const kstDate = new Date(utcDate.getTime() + KR_TIME_DIFF);
         const stringifyHTML = parsedEmail.html as string;
+        // 본문 미리보기 텍스트 생성
+        const firstTwoBody = await this.extractTwoSentenceOfArticle(
+          stringifyHTML,
+        );
         // 아티클 본문에서 순수 텍스트 추출
         const plainBody = stringifyHTML
           .replace(/<style[^>]*>@media[\s\S]*?<\/style>/gi, '')
@@ -70,6 +74,7 @@ export class ArticlesService {
             body: stringifyHTML
               .replace(/"/g, '"')
               .replace(/\n/g, '\n') as string,
+            firstTwoBody,
             plainBody,
             date: utcDate,
             publishYear: kstDate.getUTCFullYear(),
@@ -79,16 +84,7 @@ export class ArticlesService {
             newsletterId: newsletter.id,
           },
         });
-        // 본문 미리보기 텍스트 추출 후, 아티클 업데이트
-        const firstTwoBody = await this.extractTwoSentenceOfArticle(article.id);
-        await this.prisma.article.update({
-          where: {
-            id: article.id,
-          },
-          data: {
-            firstTwoBody,
-          },
-        });
+
         // 수신한 아티클 뉴스레터 구독 상태에 따른 처리
         const isSubscribed = await this.prisma.newslettersOnUsers.findUnique({
           where: {
@@ -289,18 +285,8 @@ export class ArticlesService {
   }
 
   // 아티클 미리보기 본문 추출
-  async extractTwoSentenceOfArticle(articleId: number) {
-    const article = await this.prisma.article.findUnique({
-      where: {
-        id: articleId,
-      },
-      select: {
-        id: true,
-        body: true,
-      },
-    });
-
-    const root = parse(article.body);
+  async extractTwoSentenceOfArticle(articleBody: string) {
+    const root = parse(articleBody);
 
     const selectedElements = root.querySelectorAll(
       '.stb-fore-colored, .stb-bold',
