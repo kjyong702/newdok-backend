@@ -56,6 +56,12 @@ export class ArticlesService {
         const utcDate = new Date(parsedEmail.date);
         const kstDate = new Date(utcDate.getTime() + KR_TIME_DIFF);
         const stringifyHTML = parsedEmail.html as string;
+        // 아티클 본문에서 순수 텍스트 추출
+        const plainBody = stringifyHTML
+          .replace(/<style[^>]*>@media[\s\S]*?<\/style>/gi, '')
+          .replace(/<[^>]*>/g, ' ')
+          .replace(/\s+/g, ' ')
+          .trim();
 
         // 아티클 생성
         const article = await this.prisma.article.create({
@@ -64,6 +70,7 @@ export class ArticlesService {
             body: stringifyHTML
               .replace(/"/g, '"')
               .replace(/\n/g, '\n') as string,
+            plainBody,
             date: utcDate,
             publishYear: kstDate.getUTCFullYear(),
             publishMonth: kstDate.getUTCMonth() + 1,
