@@ -13,15 +13,15 @@
 
 ## 💡 Description
 
-뭘 구독해야 나한테 도움이 될지 모르겠어 많아도 너~무 많은 뉴스레터 브랜드들🤯
+뉴스레터가 너무 많아서 어떤 걸 구독해야 할지 고민이신가요?🤯
 
-내게 필요한 뉴스레터가 맞는지 판단하기도 힘들고, 마음에 드는 뉴스레터를 찾기도 어렵죠?
+마음에 드는 뉴스레터를 찾기 어려웠다면, 이제 뉴독이 여러분을 도와드립니다!
 
-이젠 뉴독이 내게 필요한 뉴스레터만 쏙쏙! 뽑아 큐레이션 해드릴게요.
+클릭 한 번으로 구독 신청 및 관리까지 가능한 올인원 뉴스레터 큐레이션 서비스
 
-내 관심사와 필요에 따라 도움이 될 수 있는 뉴스레터를 추천받고, 한 번에 구독 신청까지!
+뉴독과 함께 더 스마트한 뉴스레터 구독 경험을 시작해보세요.
 
-지금 바로 내게 필요한 뉴스레터를 추천 받아보세요.
+지금 바로 내게 꼭 맞는 뉴스레터를 추천 받아보세요!
 
 
 ## 👀 서비스 핵심 기능 소개
@@ -32,29 +32,37 @@
 
 ### 추천 뉴스레터
 
-사용자가 고른 산업군과 관심사를 바탕으로 최적/차선 추천 뉴스레터 리스트를 메인화면에 반영합니다. <br/>
-
-### 뉴스레터 둘러보기
-
-산업별, 요일별로 분류된 모든 뉴스레터 미리보기, 지난 아티클 보기, 구독하기 등 상세페이지를 제공합니다. <br/>
+사용자가 고른 산업군과 관심사를 바탕으로 추천 뉴스레터 리스트를 제공합니다. <br/>
 
 ### 개인 아티클 수신함
 
 구독신청한 뉴스레터로부터 수신받은 아티클을 날짜별로 관리하는 개인 우편함을 제공합니다. <br/>
 
-<br />
+### 북마크함
 
+중요한 아티클을 북마크하여 언제든지 모아서 다시 볼 수 있는 북마크 관리 기능을 제공합니다. <br/>
 
-# ⚒️ ERD
+### 구독 관리
 
-![image](https://kr.object.ncloudstorage.com/newdok-bucket/%EB%89%B4%EB%8F%85%20ERD%28%EC%B5%9C%EC%A2%85%29.png)
+원클릭으로 뉴스레터 구독 신청 및 중지, 재개가 가능한 구독 관리 기능을 제공합니다. <br/>
+
+### 알림 기능(준비 중)
+
+뉴스레터 브랜드 업데이트 소식 및 유저의 활동에 대한 알림을 제공합니다. <br/>
 
 <br />
 
 
 ## 📐 Server Architecture
 
-<img width="80%" src="https://kr.object.ncloudstorage.com/newdok-bucket/%EB%89%B4%EB%8F%85%20%EC%95%84%ED%82%A4%ED%85%8D%EC%B2%98.png"/>
+<img width="80%" src="https://kr.object.ncloudstorage.com/newdok-bucket/%EC%84%9C%EB%B2%84%20%EC%95%84%ED%82%A4%ED%85%8D%EC%B2%98%28%EC%8B%A0%EB%B2%84%EC%A0%84%29.png"/>
+
+<br />
+
+
+# ⚒️ ERD
+
+![image](https://kr.object.ncloudstorage.com/newdok-bucket/%EB%89%B4%EB%8F%85%20ERD%2824.09%20%EC%B5%9C%EC%8B%A0%29.png)
 
 <br />
 
@@ -72,31 +80,33 @@
   "scripts": {
     "build": "nest build",
     "format": "prettier --write \"src/**/*.ts\" \"test/**/*.ts\"",
-    "start": "nest start",
-    "start:dev": "nest start --watch",
-    "start:debug": "nest start --debug --watch",
-    "start:prod": "node dist/main",
-    "lint": "eslint \"{src,apps,libs,test}/**/*.ts\" --fix",
-    "test": "jest",
-    "test:watch": "jest --watch",
-    "test:cov": "jest --coverage",
-    "test:debug": "node --inspect-brk -r tsconfig-paths/register -r ts-node/register node_modules/.bin/jest --runInBand",
-    "test:e2e": "jest --config ./test/jest-e2e.json"
+    "start": "cross-env NODE_ENV=development nest start --watch",
+    "deploy:dev": "cross-env sudo NODE_ENV=development PORT=80 pm2 start dist/main.js",
+    "deploy:prod": "cross-env sudo NODE_ENV=production PORT=80 node dist/main.js",
+    "db-push:dev": "dotenv -e .development.env -- npx prisma db push",
+    "db-studio:dev": "dotenv -e .development.env -- npx prisma studio",
+    "db-studio:prod": "dotenv -e .production.env -- npx prisma studio"
   },
   "dependencies": {
     "@nestjs/common": "^9.0.0",
+    "@nestjs/config": "^3.1.1",
     "@nestjs/core": "^9.0.0",
     "@nestjs/platform-express": "^9.0.0",
     "@nestjs/schedule": "^3.0.2",
     "@nestjs/swagger": "^6.3.0",
-    "@prisma/client": "^5.4.2",
+    "@prisma/client": "^5.16.0",
     "bcrypt": "^5.1.0",
     "class-transformer": "^0.5.1",
     "class-validator": "^0.14.0",
+    "cross-env": "^7.0.3",
+    "dotenv": "^16.4.5",
+    "dotenv-cli": "^7.3.0",
     "mailparser": "^3.6.4",
+    "node-html-parser": "^6.1.13",
     "node-pop3": "^0.9.0",
     "reflect-metadata": "^0.1.13",
-    "rxjs": "^7.2.0"
+    "rxjs": "^7.2.0",
+    "twilio": "^5.2.2"
   },
   "devDependencies": {
     "@nestjs/cli": "^9.0.0",
@@ -118,7 +128,7 @@
     "eslint-plugin-prettier": "^4.0.0",
     "jest": "29.3.1",
     "prettier": "^2.3.2",
-    "prisma": "^5.4.2",
+    "prisma": "^5.16.0",
     "source-map-support": "^0.5.20",
     "supertest": "^6.1.3",
     "ts-jest": "29.0.3",
@@ -145,6 +155,7 @@
     "testEnvironment": "node"
   }
 }
+
 
 
 ```
