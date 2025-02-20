@@ -9,12 +9,16 @@ export class AuthController {
 
   @ApiOperation({
     summary: 'SMS 인증번호 전송',
-    description: '6자리 숫자 인증번호 전송',
+    description: '6자리 숫자 인증번호를 지정된 전화번호로 전송합니다.',
   })
   @ApiBody({
     schema: {
       properties: {
-        phoneNumber: { type: 'string', example: '01055039184' },
+        phoneNumber: {
+          type: 'string',
+          description: '인증번호를 받을 전화번호',
+          example: '01055039184',
+        },
       },
     },
   })

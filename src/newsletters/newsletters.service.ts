@@ -16,11 +16,11 @@ export class NewslettersService {
     });
 
     if (!user.industryId) {
-      throw new BadRequestException('사전조사 미실시 유저입니다');
+      throw new BadRequestException('종사산업 미선택 유저입니다');
     }
     const interestIds = user.interests.map((data) => data.interestId);
     if (interestIds.length === 0) {
-      throw new BadRequestException('사전조사 미실시 유저입니다');
+      throw new BadRequestException('관심사 미선택 유저입니다');
     }
 
     const intersection = await this.prisma.newsletter.findMany({
@@ -189,11 +189,7 @@ export class NewslettersService {
       subscribeUrl: newsletter.subscribeUrl,
       imageUrl: newsletter.imageUrl,
       brandArticleList: newsletter.articles,
-      isSubscribed: !isSubscribed
-        ? 'INITIAL'
-        : isSubscribed.status === 'CONFIRMED'
-        ? 'CONFIRMED'
-        : 'CHECK',
+      isSubscribed: !isSubscribed ? 'INITIAL' : isSubscribed.status,
       subscribeCheck: newsletter.doubleCheck,
     };
 
@@ -299,12 +295,16 @@ export class NewslettersService {
 
       const newslettersSubscribed = [];
       arr1.forEach((newsletter) => {
+        // 구독 중인지 중지 상태인지 검사
+        const subscribeStatus = newsletter.users.find(
+          (user) => user.userId === userId,
+        ).status;
         newslettersSubscribed.push({
           brandId: newsletter.id,
           brandName: newsletter.brandName,
           imageUrl: newsletter.imageUrl,
           interests: newsletter.interests,
-          isSubscribed: 'CONFIRMED',
+          isSubscribed: subscribeStatus,
           shortDescription: newsletter.secondDescription,
           subscriptionCount: newsletter.users.length,
         });
@@ -387,18 +387,23 @@ export class NewslettersService {
           ],
         },
         include: {
+          users: true,
           interests: true,
         },
       });
 
       const newslettersSubscribed = [];
       arr1.forEach((newsletter) => {
+        // 구독 중인지 중지 상태인지 검사
+        const subscribeStatus = newsletter.users.find(
+          (user) => user.userId === userId,
+        ).status;
         newslettersSubscribed.push({
           brandId: newsletter.id,
           brandName: newsletter.brandName,
           imageUrl: newsletter.imageUrl,
           interests: newsletter.interests,
-          isSubscribed: 'CONFIRMED',
+          isSubscribed: subscribeStatus,
           shortDescription: newsletter.secondDescription,
           createdAt: newsletter.createdAt,
         });
@@ -570,5 +575,141 @@ export class NewslettersService {
       });
       return data;
     }
+  }
+
+  // 구독 중인 뉴스레터 조회
+  async getUserNewsletterSubscriptions(userId: number) {
+    const activeSubscribedNewsletters = await this.prisma.newsletter.findMany({
+      where: {
+        users: {
+          some: { AND: [{ userId }, { status: 'CONFIRMED' }] },
+        },
+      },
+      select: {
+        id: true,
+        brandName: true,
+        imageUrl: true,
+        publicationCycle: true,
+      },
+    });
+
+    return activeSubscribedNewsletters;
+  }
+
+  // 구독 중지 중인 뉴스레터 조회
+  async getPausedUserNewsletterSubscriptions(userId: number) {
+    const pausedSubscribedNewsletters = await this.prisma.newsletter.findMany({
+      where: {
+        users: {
+          some: {
+            AND: [{ userId }, { status: 'PAUSED' }],
+          },
+        },
+      },
+      select: {
+        id: true,
+        brandName: true,
+        imageUrl: true,
+        publicationCycle: true,
+      },
+    });
+
+    return pausedSubscribedNewsletters;
+  }
+
+  // 뉴스레터 구독 중지
+  async pauseUserNewsletterSubscription(newsletterId: string, userId: number) {
+    const isSubscribed = await this.prisma.newslettersOnUsers.findUnique({
+      where: {
+        userId_newsletterId: {
+          userId,
+          newsletterId: parseInt(newsletterId),
+        },
+      },
+    });
+    if (!isSubscribed || isSubscribed.status !== 'CONFIRMED') {
+      throw new BadRequestException('구독 중인 뉴스레터가 아닙니다');
+    }
+
+    const result = await this.prisma.newslettersOnUsers.update({
+      where: {
+        userId_newsletterId: {
+          userId,
+          newsletterId: parseInt(newsletterId),
+        },
+      },
+      data: {
+        status: 'PAUSED',
+      },
+    });
+
+    return {
+      userId: result.userId,
+      newsletterId: result.newsletterId,
+      status: result.status,
+    };
+  }
+
+  // 뉴스레터 구독 재개
+  async resumeUserNewsletterSubscription(newsletterId: string, userId: number) {
+    const isSubscribed = await this.prisma.newslettersOnUsers.findUnique({
+      where: {
+        userId_newsletterId: {
+          userId,
+          newsletterId: parseInt(newsletterId),
+        },
+      },
+    });
+    if (!isSubscribed || isSubscribed.status !== 'PAUSED') {
+      throw new BadRequestException('구독 중지 중인 뉴스레터가 아닙니다');
+    }
+
+    const result = await this.prisma.newslettersOnUsers.update({
+      where: {
+        userId_newsletterId: {
+          userId,
+          newsletterId: parseInt(newsletterId),
+        },
+      },
+      data: {
+        status: 'CONFIRMED',
+      },
+    });
+
+    return {
+      userId: result.userId,
+      newsletterId: result.newsletterId,
+      status: result.status,
+    };
+  }
+
+  async searchNewsletters(brandName: string) {
+    if (!brandName.trim()) {
+      throw new BadRequestException('검색어가 없습니다');
+    }
+    const searchedNewsletters = await this.prisma.newsletter.findMany({
+      where: {
+        OR: [
+          {
+            brandName: {
+              contains: brandName.trim(),
+            },
+          },
+          {
+            brandName: {
+              contains: brandName.replace(/\s+/g, ''),
+            },
+          },
+        ],
+      },
+      select: {
+        id: true,
+        brandName: true,
+        firstDescription: true,
+        imageUrl: true,
+      },
+    });
+
+    return searchedNewsletters;
   }
 }
