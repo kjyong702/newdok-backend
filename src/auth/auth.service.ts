@@ -14,7 +14,7 @@ export class AuthService {
     try {
       const verifyCode = Math.floor(Math.random() * (999999 - 100000)) + 100000;
       await client.messages.create({
-        body: `인증번호 [${verifyCode}]를 입력해주세요.`,
+        body: `[뉴독] 인증번호[${verifyCode}] 타인에게 절대 알려주지 마세요.`,
         messagingServiceSid,
         to: `+82${phoneNumber}`,
       });
