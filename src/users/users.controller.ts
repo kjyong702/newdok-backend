@@ -407,4 +407,12 @@ export class UsersController {
   ) {
     return this.usersService.changePhoneNumber(phoneNumber, req.user.id);
   }
+
+  @Get('my')
+  @ApiOperation({ summary: '내 정보 조회' })
+  @ApiBearerAuth()
+  @UseGuards(AuthGuard)
+  async getMyInfo(@Req() req: any) {
+    return this.usersService.getMyInfo(req.user.id);
+  }
 }
