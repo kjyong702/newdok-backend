@@ -298,4 +298,19 @@ export class UsersService {
 
     return updatedUser;
   }
+
+  async getMyInfo(userId: number) {
+    const user = await this.prisma.user.findUnique({
+      where: {
+        id: userId,
+      },
+      include: {
+        interests: true,
+      },
+    });
+    if (!user) {
+      throw new BadRequestException('존재하지 않는 유저입니다');
+    }
+    return user;
+  }
 }
