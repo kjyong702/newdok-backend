@@ -261,6 +261,22 @@ export class NewslettersController {
   }
 
   @ApiOperation({
+    summary: '모든 뉴스레터 브랜드 조회(비회원)',
+  })
+  @Get('/non-member')
+  async getAllNewslettersForNonMember(
+    @Query('orderOpt') orderOpt: string,
+    @Query('industry') industries: string[],
+    @Query('day') days: string[],
+  ) {
+    return this.newslettersService.getAllNewslettersForNonMember(
+      orderOpt,
+      industries,
+      days,
+    );
+  }
+
+  @ApiOperation({
     summary: '뉴스레터 브랜드 조회(회원)',
     description:
       '주어진 id 값에 해당하는 뉴스레터 브랜드의 상세 정보를 조회한다.',
@@ -388,22 +404,6 @@ export class NewslettersController {
     return this.newslettersService.resumeUserNewsletterSubscription(
       newsletterId,
       req.user.id,
-    );
-  }
-
-  @ApiOperation({
-    summary: '모든 뉴스레터 브랜드 조회(비회원)',
-  })
-  @Get('/non-member')
-  async getAllNewslettersForNonMember(
-    @Query('orderOpt') orderOpt: string,
-    @Query('industry') industries: string[],
-    @Query('day') days: string[],
-  ) {
-    return this.newslettersService.getAllNewslettersForNonMember(
-      orderOpt,
-      industries,
-      days,
     );
   }
 
