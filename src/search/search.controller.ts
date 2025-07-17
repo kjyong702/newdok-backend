@@ -21,7 +21,7 @@ export class SearchController {
     name: 'brandName',
     description: '검색할 뉴스레터 브랜드명',
     type: 'string',
-    example: '뉴닉',
+    example: 'NEWNEEK',
   })
   @ApiOkResponse({
     description: '뉴스레터 브랜드 검색 결과',
