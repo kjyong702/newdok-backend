@@ -414,4 +414,23 @@ export class NewslettersController {
   async getNewsletterByIdForNonMember(@Param('id') brandId: string) {
     return this.newslettersService.getNewsletterByIdForNonMember(brandId);
   }
+
+  @ApiOperation({
+    summary: '구독 중인 뉴스레터 개수 조회',
+    description: '현재 사용자가 구독 중인 뉴스레터의 총 개수를 반환합니다.',
+  })
+  @ApiBearerAuth()
+  @UseGuards(AuthGuard)
+  @ApiOkResponse({
+    description: '구독 중인 뉴스레터 개수 조회 성공',
+    schema: {
+      example: {
+        count: 5,
+      },
+    },
+  })
+  @Get('/subscription/count')
+  async getUserSubscriptionCount(@Req() req: any) {
+    return this.newslettersService.getUserSubscriptionCount(req.user.id);
+  }
 }

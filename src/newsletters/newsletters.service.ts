@@ -712,4 +712,15 @@ export class NewslettersService {
 
     return searchedNewsletters;
   }
+
+  async getUserSubscriptionCount(userId: number) {
+    const count = await this.prisma.newslettersOnUsers.count({
+      where: {
+        userId,
+        status: 'CONFIRMED',
+      },
+    });
+
+    return { count };
+  }
 }

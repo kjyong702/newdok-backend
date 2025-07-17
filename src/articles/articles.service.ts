@@ -539,4 +539,14 @@ export class ArticlesService {
 
     return matchedSentence;
   }
+
+  async getUserReceivedArticleCount(userId: number) {
+    const count = await this.prisma.article.count({
+      where: {
+        userId,
+      },
+    });
+
+    return { count };
+  }
 }
