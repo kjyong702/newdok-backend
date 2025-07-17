@@ -683,33 +683,14 @@ export class NewslettersService {
     };
   }
 
-  async searchNewsletters(brandName: string) {
-    if (!brandName.trim()) {
-      throw new BadRequestException('검색어가 없습니다');
-    }
-    const searchedNewsletters = await this.prisma.newsletter.findMany({
+  async getUserSubscriptionCount(userId: number) {
+    const count = await this.prisma.newslettersOnUsers.count({
       where: {
-        OR: [
-          {
-            brandName: {
-              contains: brandName.trim(),
-            },
-          },
-          {
-            brandName: {
-              contains: brandName.replace(/\s+/g, ''),
-            },
-          },
-        ],
-      },
-      select: {
-        id: true,
-        brandName: true,
-        firstDescription: true,
-        imageUrl: true,
+        userId,
+        status: 'CONFIRMED',
       },
     });
 
-    return searchedNewsletters;
+    return { count };
   }
 }

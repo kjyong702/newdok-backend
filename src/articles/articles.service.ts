@@ -498,45 +498,13 @@ export class ArticlesService {
     };
   }
 
-  async searchArticles(keyword: string) {
-    if (!keyword.trim()) {
-      throw new BadRequestException('검색어를 입력해주세요.');
-    }
-
-    const article = await this.prisma.article.findUnique({
+  async getUserReceivedArticleCount(userId: number) {
+    const count = await this.prisma.article.count({
       where: {
-        id: 89930,
-      },
-      select: {
-        id: true,
-        body: true,
+        userId,
       },
     });
 
-    const plainBody = this.stripHtml(article.body);
-    // TODO: 검색어와 일치하는 결과가 없는 경우, 예외 처리 필요
-    const matchedSentence = this.extractMatchedSentence(plainBody, keyword);
-
-    return matchedSentence.trim();
-  }
-
-  private stripHtml(html: string): string {
-    const root = parse(html);
-
-    let textContent = root.textContent || '';
-
-    textContent = textContent.replace(/\s+/g, ' ').trim();
-
-    return textContent;
-  }
-
-  private extractMatchedSentence(text: string, keyword: string): string {
-    const sentences = text.split(/(?<=[.?!])\s+/);
-
-    const matchedSentence = sentences.find((sentence) =>
-      sentence.includes(keyword),
-    );
-
-    return matchedSentence;
+    return { count };
   }
 }

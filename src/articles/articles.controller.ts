@@ -239,11 +239,6 @@ export class ArticlesController {
     return this.articlesService.getUserBookmarkedInterests(req.user.id);
   }
 
-  @Get('/search')
-  async searchArticles(@Query('keyword') keyword: string) {
-    return this.articlesService.searchArticles(keyword);
-  }
-
   @ApiOperation({
     summary: '아티클 읽기',
     description: '특정 id 값을 기반으로 아티클을 조회합니다.',
@@ -274,5 +269,25 @@ export class ArticlesController {
   @Get('/:id')
   async getArticleById(@Param('id') id: string) {
     return this.articlesService.getArticleById(id);
+  }
+
+  @ApiOperation({
+    summary: '수신받은 아티클 개수 조회',
+    description:
+      '현재 사용자가 지금까지 수신받은 아티클의 총 개수를 반환합니다.',
+  })
+  @ApiBearerAuth()
+  @UseGuards(AuthGuard)
+  @ApiOkResponse({
+    description: '수신받은 아티클 개수 조회 성공',
+    schema: {
+      example: {
+        count: 142,
+      },
+    },
+  })
+  @Get('/received/count')
+  async getUserReceivedArticleCount(@Req() req: any) {
+    return this.articlesService.getUserReceivedArticleCount(req.user.id);
   }
 }

@@ -415,4 +415,24 @@ export class UsersController {
   async getMyInfo(@Req() req: any) {
     return this.usersService.getMyInfo(req.user.id);
   }
+
+  @ApiOperation({
+    summary: '회원 탈퇴',
+    description: '사용자 계정을 탈퇴 처리합니다. (Soft Delete)',
+  })
+  @ApiBearerAuth()
+  @UseGuards(AuthGuard)
+  @ApiOkResponse({
+    description: '회원 탈퇴가 성공적으로 처리되었습니다.',
+    schema: {
+      example: {
+        message: '회원 탈퇴가 완료되었습니다.',
+        deletedAt: '2024-12-19T10:30:00.000Z',
+      },
+    },
+  })
+  @Patch('/withdraw')
+  async withdrawUser(@Req() req: any) {
+    return this.usersService.withdrawUser(req.user.id);
+  }
 }
