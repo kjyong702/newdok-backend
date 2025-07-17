@@ -6,32 +6,26 @@ import { parse } from 'node-html-parser';
 export class SearchService {
   constructor(private prisma: PrismaService) {}
 
+  // 개선된 뉴스레터 검색 (띄어쓰기 무시 검색 지원)
   async searchNewsletters(brandName: string) {
     if (!brandName.trim()) {
       throw new BadRequestException('검색어가 없습니다');
     }
-    const searchedNewsletters = await this.prisma.newsletter.findMany({
-      where: {
-        OR: [
-          {
-            brandName: {
-              contains: brandName.trim(),
-            },
-          },
-          {
-            brandName: {
-              contains: brandName.replace(/\s+/g, ''),
-            },
-          },
-        ],
-      },
-      select: {
-        id: true,
-        brandName: true,
-        firstDescription: true,
-        imageUrl: true,
-      },
-    });
+
+    // 브랜드명과 검색어 모두 띄어쓰기 제거 후 매칭 (대소문자 무시)
+    const searchKeyword = brandName.replace(/\s+/g, '').toUpperCase();
+    const searchedNewsletters = await this.prisma.$queryRaw<
+      {
+        id: number;
+        brandName: string;
+        firstDescription: string;
+        imageUrl: string;
+      }[]
+    >`
+      SELECT id, brandName, firstDescription, imageUrl 
+      FROM Newsletter 
+      WHERE UPPER(REPLACE(brandName, ' ', '')) LIKE ${`%${searchKeyword}%`}
+    `;
 
     return searchedNewsletters;
   }
@@ -41,21 +35,51 @@ export class SearchService {
       throw new BadRequestException('검색어를 입력해주세요.');
     }
 
-    const article = await this.prisma.article.findUnique({
-      where: {
-        id: 89930,
-      },
-      select: {
-        id: true,
-        body: true,
-      },
-    });
+    // 임시: 개발 중 응답 반환
+    return '아티클 검색 기능은 현재 개발 중입니다. 곧 제공될 예정입니다.';
 
-    const plainBody = this.stripHtml(article.body);
-    // TODO: 검색어와 일치하는 결과가 없는 경우, 예외 처리 필요
-    const matchedSentence = this.extractMatchedSentence(plainBody, keyword);
+    // TODO: 아래 로직을 개선하여 활성화 예정
+    // // 핵심 개선: 하드코딩된 ID 제거, 검색어에 맞는 아티클 찾기
+    // const article = await this.prisma.article.findFirst({
+    //   where: {
+    //     AND: [
+    //       { isVisible: true },
+    //       {
+    //         OR: [
+    //           {
+    //             title: {
+    //               contains: keyword.trim(),
+    //             },
+    //           },
+    //           {
+    //             plainBody: {
+    //               contains: keyword.trim(),
+    //             },
+    //           },
+    //         ],
+    //       },
+    //     ],
+    //   },
+    //   select: {
+    //     id: true,
+    //     plainBody: true,
+    //   },
+    //   orderBy: {
+    //     date: 'desc',
+    //   },
+    // });
 
-    return matchedSentence.trim();
+    // if (!article) {
+    //   throw new BadRequestException('검색 결과가 없습니다.');
+    // }
+
+    // // TODO: 검색어와 일치하는 결과가 없는 경우, 예외 처리 필요
+    // const matchedSentence = this.extractMatchedSentence(
+    //   article.plainBody,
+    //   keyword,
+    // );
+
+    // return matchedSentence?.trim() || '매칭되는 문장을 찾을 수 없습니다.';
   }
 
   private stripHtml(html: string): string {
