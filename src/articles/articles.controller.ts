@@ -239,11 +239,6 @@ export class ArticlesController {
     return this.articlesService.getUserBookmarkedInterests(req.user.id);
   }
 
-  @Get('/search')
-  async searchArticles(@Query('keyword') keyword: string) {
-    return this.articlesService.searchArticles(keyword);
-  }
-
   @ApiOperation({
     summary: '아티클 읽기',
     description: '특정 id 값을 기반으로 아티클을 조회합니다.',

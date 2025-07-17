@@ -160,11 +160,6 @@ export class NewslettersController {
     return this.newslettersService.getRecommendedNewsletters(req.user.id);
   }
 
-  @Get('/search')
-  async searchNewsletters(@Query('brandName') brandName: string) {
-    return this.newslettersService.searchNewsletters(brandName);
-  }
-
   @ApiOperation({
     summary: '모든 뉴스레터 브랜드 조회(회원)',
     description:
