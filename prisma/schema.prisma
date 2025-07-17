@@ -19,6 +19,7 @@ model User {
   subscribeEmail    String               @unique
   subscribePassword String               
   createdAt         DateTime             @default(now())
+  deletedAt         DateTime?
   industry          Industry?            @relation(fields: [industryId], references: [id])
   industryId        Int?
   interests         InterestsOnUsers[]
