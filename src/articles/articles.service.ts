@@ -390,12 +390,16 @@ export class ArticlesService {
           },
         },
       });
-      article.newsletter.interests.forEach((interest) => {
-        bookmarkedInterestIds.push({
-          id: interest.id,
-          name: interest.name,
+
+      // null 체크 추가
+      if (article && article.newsletter && article.newsletter.interests) {
+        article.newsletter.interests.forEach((interest) => {
+          bookmarkedInterestIds.push({
+            id: interest.id,
+            name: interest.name,
+          });
         });
-      });
+      }
     });
     await Promise.all(promises);
 
@@ -406,7 +410,7 @@ export class ArticlesService {
       ).values(),
     ].sort((a, b) => a.id - b.id);
 
-    return bookmarkedInterestIds;
+    return { data: bookmarkedInterestIds };
   }
 
   // 북마크한 아티클 조회
@@ -445,13 +449,14 @@ export class ArticlesService {
     });
 
     // 선택된 관심사 id가 있으면 필터링, 없으면 전체 선택
-    bookmarkedArticlesForInterest = !interestId
-      ? bookmark
-      : (bookmarkedArticlesForInterest = bookmark.filter((data) => {
-          return data.article.newsletter.interests.some(
-            (interest) => interest.id === parseInt(interestId),
-          );
-        }));
+    bookmarkedArticlesForInterest =
+      !interestId || interestId.trim() === ''
+        ? bookmark
+        : (bookmarkedArticlesForInterest = bookmark.filter((data) => {
+            return data.article.newsletter.interests.some(
+              (interest) => interest.id === parseInt(interestId),
+            );
+          }));
 
     // 북마크 아티클 월별 그룹화
     const bookmarkedArticlesGroupedByMonth = {};
@@ -482,9 +487,11 @@ export class ArticlesService {
       (a, b) => (a < b ? 1 : -1),
     );
 
-    for (const key of sortedKeys) {
+    for (let i = 0; i < sortedKeys.length; i++) {
+      const key = sortedKeys[i];
       const [year, month] = key.split('-');
       bookmarkedArticlesGroupedByAndSorted.push({
+        id: i + 1,
         month: `${year}년 ${month}월`,
         bookmark: bookmarkedArticlesGroupedByMonth[key],
       });

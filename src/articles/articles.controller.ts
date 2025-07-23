@@ -128,10 +128,11 @@ export class ArticlesController {
     description: '사용자가 북마크한 아티클을 관심사별로 조회합니다.',
   })
   @ApiQuery({
-    name: 'interest',
-    description: '관심사 id',
+    name: 'interestId',
+    description: '관심사 id (비어있으면 전체 조회)',
     type: 'string',
     example: '1',
+    required: false,
   })
   @ApiBearerAuth()
   @UseGuards(AuthGuard)
@@ -178,7 +179,7 @@ export class ArticlesController {
   })
   @Get('/bookmark')
   async getBookmarkedArticles(
-    @Query('interest') interestId: string,
+    @Query('interestId') interestId: string,
     @Req() req: any,
   ) {
     return this.articlesService.getBookmarkedArticles(interestId, req.user.id);
