@@ -18,6 +18,8 @@ import {
   ApiBody,
   ApiBearerAuth,
   ApiOkResponse,
+  ApiBadRequestResponse,
+  ApiNotFoundResponse,
 } from '@nestjs/swagger';
 
 @ApiTags('Article')
@@ -125,13 +127,23 @@ export class ArticlesController {
 
   @ApiOperation({
     summary: '북마크한 아티클 조회',
-    description: '사용자가 북마크한 아티클을 관심사별로 조회합니다.',
+    description:
+      '사용자가 북마크한 아티클을 관심사별로 조회하고 정렬 기준에 따라 정렬합니다.',
   })
   @ApiQuery({
-    name: 'interest',
-    description: '관심사 id',
+    name: 'interestId',
+    description: '관심사 id (비어있으면 전체 조회)',
     type: 'string',
     example: '1',
+    required: false,
+  })
+  @ApiQuery({
+    name: 'sortBy',
+    description:
+      '정렬 기준 (bookmark_date: 북마크 추가순, article_date_desc: 최신 아티클순, article_date_asc: 오래된 아티클순)',
+    type: 'string',
+    example: 'bookmark_date',
+    required: false,
   })
   @ApiBearerAuth()
   @UseGuards(AuthGuard)
@@ -178,10 +190,15 @@ export class ArticlesController {
   })
   @Get('/bookmark')
   async getBookmarkedArticles(
-    @Query('interest') interestId: string,
+    @Query('interestId') interestId: string,
+    @Query('sortBy') sortBy: string,
     @Req() req: any,
   ) {
-    return this.articlesService.getBookmarkedArticles(interestId, req.user.id);
+    return this.articlesService.getBookmarkedArticles(
+      interestId,
+      sortBy,
+      req.user.id,
+    );
   }
 
   @ApiOperation({
@@ -205,8 +222,65 @@ export class ArticlesController {
   @ApiOkResponse({
     description: '북마크 요청 또는 취소 성공',
     schema: {
+      type: 'object',
+      properties: {
+        success: { type: 'boolean', example: true },
+        action: { type: 'string', example: 'added' },
+        message: { type: 'string', example: '북마크가 추가되었습니다.' },
+        data: {
+          type: 'object',
+          properties: {
+            articleId: { type: 'number', example: 1 },
+            articleTitle: {
+              type: 'string',
+              example: '🦔 뉴독 뉴니커, 만나서 반갑슴!',
+            },
+            isBookmarked: { type: 'boolean', example: true },
+          },
+        },
+      },
       example: {
+        success: true,
+        action: 'added',
         message: '북마크가 추가되었습니다.',
+        data: {
+          articleId: 1,
+          articleTitle: '🦔 뉴독 뉴니커, 만나서 반갑슴!',
+          isBookmarked: true,
+        },
+      },
+    },
+  })
+  @ApiBadRequestResponse({
+    description:
+      '잘못된 요청 (유효하지 않은 articleId, 본인 아티클이 아닌 경우)',
+    schema: {
+      type: 'object',
+      properties: {
+        message: { type: 'string' },
+        error: { type: 'string' },
+        statusCode: { type: 'number' },
+      },
+      example: {
+        message: '본인이 수신받은 아티클만 북마크할 수 있습니다.',
+        error: 'Bad Request',
+        statusCode: 400,
+      },
+    },
+  })
+  @ApiNotFoundResponse({
+    description: '존재하지 않는 아티클',
+    schema: {
+      type: 'object',
+      properties: {
+        message: { type: 'string' },
+        error: { type: 'string' },
+        statusCode: { type: 'number' },
+      },
+      example: {
+        message: '존재하지 않는 아티클입니다.',
+        error: 'Not Found',
+        statusCode: 404,
       },
     },
   })
