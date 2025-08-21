@@ -160,11 +160,6 @@ export class NewslettersController {
     return this.newslettersService.getRecommendedNewsletters(req.user.id);
   }
 
-  @Get('/search')
-  async searchNewsletters(@Query('brandName') brandName: string) {
-    return this.newslettersService.searchNewsletters(brandName);
-  }
-
   @ApiOperation({
     summary: '모든 뉴스레터 브랜드 조회(회원)',
     description:
@@ -257,6 +252,22 @@ export class NewslettersController {
       industries,
       days,
       req.user.id,
+    );
+  }
+
+  @ApiOperation({
+    summary: '모든 뉴스레터 브랜드 조회(비회원)',
+  })
+  @Get('/non-member')
+  async getAllNewslettersForNonMember(
+    @Query('orderOpt') orderOpt: string,
+    @Query('industry') industries: string[],
+    @Query('day') days: string[],
+  ) {
+    return this.newslettersService.getAllNewslettersForNonMember(
+      orderOpt,
+      industries,
+      days,
     );
   }
 
@@ -392,26 +403,29 @@ export class NewslettersController {
   }
 
   @ApiOperation({
-    summary: '모든 뉴스레터 브랜드 조회(비회원)',
-  })
-  @Get('/non-member')
-  async getAllNewslettersForNonMember(
-    @Query('orderOpt') orderOpt: string,
-    @Query('industry') industries: string[],
-    @Query('day') days: string[],
-  ) {
-    return this.newslettersService.getAllNewslettersForNonMember(
-      orderOpt,
-      industries,
-      days,
-    );
-  }
-
-  @ApiOperation({
     summary: '뉴스레터 브랜드 조회(비회원)',
   })
   @Get('/:id/non-member')
   async getNewsletterByIdForNonMember(@Param('id') brandId: string) {
     return this.newslettersService.getNewsletterByIdForNonMember(brandId);
+  }
+
+  @ApiOperation({
+    summary: '구독 중인 뉴스레터 개수 조회',
+    description: '현재 사용자가 구독 중인 뉴스레터의 총 개수를 반환합니다.',
+  })
+  @ApiBearerAuth()
+  @UseGuards(AuthGuard)
+  @ApiOkResponse({
+    description: '구독 중인 뉴스레터 개수 조회 성공',
+    schema: {
+      example: {
+        count: 5,
+      },
+    },
+  })
+  @Get('/subscription/count')
+  async getUserSubscriptionCount(@Req() req: any) {
+    return this.newslettersService.getUserSubscriptionCount(req.user.id);
   }
 }

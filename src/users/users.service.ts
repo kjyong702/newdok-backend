@@ -58,7 +58,10 @@ export class UsersService {
 
   async login(loginId: string, password: string) {
     const user = await this.prisma.user.findUnique({
-      where: { loginId },
+      where: {
+        loginId,
+        deletedAt: null, // 탈퇴되지 않은 유저만
+      },
       include: {
         interests: true,
       },
@@ -142,7 +145,10 @@ export class UsersService {
 
   async getUserByLoginId(loginId: string) {
     const user = await this.prisma.user.findUnique({
-      where: { loginId },
+      where: {
+        loginId,
+        deletedAt: null, // 탈퇴되지 않은 유저만
+      },
       select: {
         id: true,
         loginId: true,
@@ -159,7 +165,10 @@ export class UsersService {
 
   async getUsersByPhoneNumber(phoneNumber: string) {
     const users = await this.prisma.user.findMany({
-      where: { phoneNumber },
+      where: {
+        phoneNumber,
+        deletedAt: null, // 탈퇴되지 않은 유저만
+      },
       select: {
         id: true,
         loginId: true,
@@ -271,6 +280,7 @@ export class UsersService {
       const user = await this.prisma.user.findUnique({
         where: {
           loginId,
+          deletedAt: null, // 탈퇴되지 않은 유저만
         },
       });
       if (!user) {
@@ -286,6 +296,7 @@ export class UsersService {
     const updatedUser = await this.prisma.user.update({
       where: {
         loginId,
+        deletedAt: null, // 탈퇴되지 않은 유저만
       },
       data: {
         password: newHashedPassword,
@@ -297,5 +308,54 @@ export class UsersService {
     });
 
     return updatedUser;
+  }
+
+  async getMyInfo(userId: number) {
+    const user = await this.prisma.user.findUnique({
+      where: {
+        id: userId,
+        deletedAt: null, // 탈퇴되지 않은 유저만
+      },
+      include: {
+        interests: true,
+      },
+    });
+    if (!user) {
+      throw new BadRequestException('존재하지 않는 유저입니다');
+    }
+    return user;
+  }
+
+  async withdrawUser(userId: number) {
+    // 이미 탈퇴한 유저인지 확인
+    const user = await this.prisma.user.findUnique({
+      where: {
+        id: userId,
+      },
+    });
+
+    if (!user) {
+      throw new BadRequestException('존재하지 않는 유저입니다');
+    }
+
+    if (user.deletedAt) {
+      throw new BadRequestException('이미 탈퇴한 유저입니다');
+    }
+
+    // Soft Delete: deletedAt 필드에 현재 시간 설정
+    const deletedAt = new Date();
+    await this.prisma.user.update({
+      where: {
+        id: userId,
+      },
+      data: {
+        deletedAt,
+      },
+    });
+
+    return {
+      message: '회원 탈퇴가 완료되었습니다.',
+      deletedAt,
+    };
   }
 }

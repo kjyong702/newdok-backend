@@ -1,4 +1,8 @@
-import { Injectable, BadRequestException } from '@nestjs/common';
+import {
+  Injectable,
+  BadRequestException,
+  NotFoundException,
+} from '@nestjs/common';
 import { PrismaService } from '../prisma.service';
 import { simpleParser } from 'mailparser';
 import Pop3Command from 'node-pop3';
@@ -316,46 +320,97 @@ export class ArticlesService {
 
   // 아티클 북마크 요청 및 취소
   async bookmarkArticle(articleId: string, userId: number) {
+    const parsedArticleId = parseInt(articleId);
+
+    // 1. 아티클 존재 여부 및 소유자 확인
+    const article = await this.prisma.article.findUnique({
+      where: {
+        id: parsedArticleId,
+      },
+      select: {
+        id: true,
+        userId: true,
+        title: true,
+      },
+    });
+
+    if (!article) {
+      throw new NotFoundException('존재하지 않는 아티클입니다.');
+    }
+
+    if (article.userId !== userId) {
+      throw new BadRequestException(
+        '본인이 수신받은 아티클만 북마크할 수 있습니다.',
+      );
+    }
+
+    // 2. 현재 북마크 상태 확인
     const isBookmarked = await this.prisma.bookmark.findUnique({
       where: {
         userId_articleId: {
           userId,
-          articleId: parseInt(articleId),
+          articleId: parsedArticleId,
         },
       },
     });
+
+    // 3. 북마크 추가/삭제 처리
     if (isBookmarked) {
+      // 북마크 삭제
       await this.prisma.bookmark.delete({
         where: {
           userId_articleId: {
             userId,
-            articleId: parseInt(articleId),
+            articleId: parsedArticleId,
           },
         },
       });
       await this.prisma.article.update({
         where: {
-          id: parseInt(articleId),
+          id: parsedArticleId,
         },
         data: {
           isBookmarked: false,
         },
       });
+
+      return {
+        success: true,
+        action: 'removed',
+        message: '북마크가 취소되었습니다.',
+        data: {
+          articleId: parsedArticleId,
+          articleTitle: article.title,
+          isBookmarked: false,
+        },
+      };
     } else {
+      // 북마크 추가
       await this.prisma.bookmark.create({
         data: {
           userId,
-          articleId: parseInt(articleId),
+          articleId: parsedArticleId,
         },
       });
       await this.prisma.article.update({
         where: {
-          id: parseInt(articleId),
+          id: parsedArticleId,
         },
         data: {
           isBookmarked: true,
         },
       });
+
+      return {
+        success: true,
+        action: 'added',
+        message: '북마크가 추가되었습니다.',
+        data: {
+          articleId: parsedArticleId,
+          articleTitle: article.title,
+          isBookmarked: true,
+        },
+      };
     }
   }
 
@@ -390,12 +445,16 @@ export class ArticlesService {
           },
         },
       });
-      article.newsletter.interests.forEach((interest) => {
-        bookmarkedInterestIds.push({
-          id: interest.id,
-          name: interest.name,
+
+      // null 체크 추가
+      if (article && article.newsletter && article.newsletter.interests) {
+        article.newsletter.interests.forEach((interest) => {
+          bookmarkedInterestIds.push({
+            id: interest.id,
+            name: interest.name,
+          });
         });
-      });
+      }
     });
     await Promise.all(promises);
 
@@ -406,24 +465,33 @@ export class ArticlesService {
       ).values(),
     ].sort((a, b) => a.id - b.id);
 
-    return bookmarkedInterestIds;
+    return { data: bookmarkedInterestIds };
   }
 
   // 북마크한 아티클 조회
-  async getBookmarkedArticles(interestId: string, userId: number) {
+  async getBookmarkedArticles(
+    interestId: string,
+    sortBy: string,
+    userId: number,
+  ) {
     let bookmarkedArticlesForInterest = [];
+
+    // 정렬 기준 기본값 설정
+    const sortBy_default = sortBy || 'bookmark_date'; // 기본값: 북마크 추가순
+    const useBookmarkDateForGrouping = sortBy_default === 'bookmark_date'; // 북마크 추가일 기준 여부
 
     const bookmark = await this.prisma.bookmark.findMany({
       where: {
         userId,
       },
       select: {
+        createdAt: true, // 북마크 추가 시점
         article: {
           select: {
             id: true,
             title: true,
             firstTwoBody: true,
-            date: true,
+            date: true, // 아티클 수신 시점
             newsletter: {
               select: {
                 id: true,
@@ -445,21 +513,26 @@ export class ArticlesService {
     });
 
     // 선택된 관심사 id가 있으면 필터링, 없으면 전체 선택
-    bookmarkedArticlesForInterest = !interestId
-      ? bookmark
-      : (bookmarkedArticlesForInterest = bookmark.filter((data) => {
-          return data.article.newsletter.interests.some(
-            (interest) => interest.id === parseInt(interestId),
-          );
-        }));
+    bookmarkedArticlesForInterest =
+      !interestId || interestId.trim() === ''
+        ? bookmark
+        : (bookmarkedArticlesForInterest = bookmark.filter((data) => {
+            return data.article.newsletter.interests.some(
+              (interest) => interest.id === parseInt(interestId),
+            );
+          }));
 
     // 북마크 아티클 월별 그룹화
     const bookmarkedArticlesGroupedByMonth = {};
 
     for (const item of bookmarkedArticlesForInterest) {
-      const date = new Date(item.article.date);
-      const yearMonth = `${date.getFullYear()}-${String(
-        date.getMonth() + 1,
+      // 정렬 기준에 따라 년/월 분류 기준 날짜 결정
+      const groupingDate = useBookmarkDateForGrouping
+        ? new Date(item.createdAt) // 북마크 추가일 기준
+        : new Date(item.article.date); // 아티클 수신일 기준
+
+      const yearMonth = `${groupingDate.getFullYear()}-${String(
+        groupingDate.getMonth() + 1,
       ).padStart(2, '0')}`;
 
       if (!bookmarkedArticlesGroupedByMonth[yearMonth]) {
@@ -473,8 +546,46 @@ export class ArticlesService {
         sampleText: item.article.firstTwoBody,
         date: item.article.date,
         imageURL: item.article.newsletter.imageUrl,
+        bookmarkCreatedAt: item.createdAt, // 정렬용 북마크 추가 시점
+        articleDate: item.article.date, // 정렬용 아티클 수신 시점
       });
     }
+
+    // 각 월 내에서 정렬 기준 적용
+    Object.keys(bookmarkedArticlesGroupedByMonth).forEach((yearMonth) => {
+      const articles = bookmarkedArticlesGroupedByMonth[yearMonth];
+
+      switch (sortBy_default) {
+        case 'article_date_desc': // 최신 아티클순
+          articles.sort(
+            (a, b) =>
+              new Date(b.articleDate).getTime() -
+              new Date(a.articleDate).getTime(),
+          );
+          break;
+        case 'article_date_asc': // 오래된 아티클순
+          articles.sort(
+            (a, b) =>
+              new Date(a.articleDate).getTime() -
+              new Date(b.articleDate).getTime(),
+          );
+          break;
+        case 'bookmark_date': // 북마크 추가순 (기본값)
+        default:
+          articles.sort(
+            (a, b) =>
+              new Date(b.bookmarkCreatedAt).getTime() -
+              new Date(a.bookmarkCreatedAt).getTime(),
+          );
+          break;
+      }
+
+      // 정렬용 필드 제거 (프론트에 불필요한 데이터 제거)
+      articles.forEach((article) => {
+        delete article.bookmarkCreatedAt;
+        delete article.articleDate;
+      });
+    });
 
     // 월별 내림차순 정렬
     const bookmarkedArticlesGroupedByAndSorted = [];
@@ -482,9 +593,11 @@ export class ArticlesService {
       (a, b) => (a < b ? 1 : -1),
     );
 
-    for (const key of sortedKeys) {
+    for (let i = 0; i < sortedKeys.length; i++) {
+      const key = sortedKeys[i];
       const [year, month] = key.split('-');
       bookmarkedArticlesGroupedByAndSorted.push({
+        id: i + 1,
         month: `${year}년 ${month}월`,
         bookmark: bookmarkedArticlesGroupedByMonth[key],
       });
@@ -498,45 +611,13 @@ export class ArticlesService {
     };
   }
 
-  async searchArticles(keyword: string) {
-    if (!keyword.trim()) {
-      throw new BadRequestException('검색어를 입력해주세요.');
-    }
-
-    const article = await this.prisma.article.findUnique({
+  async getUserReceivedArticleCount(userId: number) {
+    const count = await this.prisma.article.count({
       where: {
-        id: 89930,
-      },
-      select: {
-        id: true,
-        body: true,
+        userId,
       },
     });
 
-    const plainBody = this.stripHtml(article.body);
-    // TODO: 검색어와 일치하는 결과가 없는 경우, 예외 처리 필요
-    const matchedSentence = this.extractMatchedSentence(plainBody, keyword);
-
-    return matchedSentence.trim();
-  }
-
-  private stripHtml(html: string): string {
-    const root = parse(html);
-
-    let textContent = root.textContent || '';
-
-    textContent = textContent.replace(/\s+/g, ' ').trim();
-
-    return textContent;
-  }
-
-  private extractMatchedSentence(text: string, keyword: string): string {
-    const sentences = text.split(/(?<=[.?!])\s+/);
-
-    const matchedSentence = sentences.find((sentence) =>
-      sentence.includes(keyword),
-    );
-
-    return matchedSentence;
+    return { count };
   }
 }
