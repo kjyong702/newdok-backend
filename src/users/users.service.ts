@@ -20,7 +20,7 @@ export class UsersService {
     const userList = await this.prisma.user.findMany();
 
     const emailIndex = parseInt(userList[userList.length - 1].emailIndex) + 1;
-    const subscribeEmail = `newdok${emailIndex}@newdok.site`;
+    const subscribeEmail = `newdok${emailIndex}@newdok.store`;
     const subscribePassword = `!Kknewdok${emailIndex}`;
     const hashedLoginPassword = await bcrypt.hash(password, 10);
 
