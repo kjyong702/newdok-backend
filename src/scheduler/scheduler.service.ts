@@ -6,7 +6,7 @@ import { ArticlesService } from '../articles/articles.service';
 export class SchedulerService {
   constructor(private articlesService: ArticlesService) {}
 
-  // @Cron('0 */5 * * * *')
+  @Cron('0 */1 * * * *')
   async pop3() {
     return this.articlesService.POP3();
   }
