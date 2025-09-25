@@ -23,10 +23,14 @@ export class ArticlesService {
     });
     for (let i = 0; i < allUser.length; i++) {
       const user = allUser[i];
+
+      // iwinv 웹메일 서비스 개편으로 POP3S(TLS) 연결 사용
       const pop3 = new Pop3Command({
         user: user.subscribeEmail,
         password: user.subscribePassword,
-        host: 'mail.newdok.site',
+        host: 'mail.newdok.store',
+        port: 995,
+        tls: true,
       });
       const emailList = await pop3.UIDL();
       const numOfArticles = user._count.articles;
@@ -34,6 +38,16 @@ export class ArticlesService {
       for (let i = numOfArticles + 1; i <= emailList.length; i++) {
         const rawEmail = await pop3.RETR(i);
         const parsedEmail = await simpleParser(rawEmail);
+
+        // 디버깅: 이메일 헤더 정보 출력
+        console.log('=== 이메일 헤더 디버깅 ===');
+        console.log('From:', parsedEmail.from);
+        console.log('Reply-To:', parsedEmail.replyTo);
+        console.log('Return-Path:', parsedEmail.headers.get('return-path'));
+        console.log('Sender:', parsedEmail.headers.get('sender'));
+        console.log('Subject:', parsedEmail.subject);
+        console.log('========================');
+
         const { address } = parsedEmail.from.value[0];
         // 최대 3회까지 뉴스레터 브랜드 존재 여부 검사
         let newsletter = await this.prisma.newsletter.findUnique({
@@ -55,11 +69,22 @@ export class ArticlesService {
             },
           });
         }
+
+        // 뉴스레터 브랜드를 찾을 수 없는 경우 에러 발생
+        if (!newsletter) {
+          throw new Error(`알 수 없는 뉴스레터 발신자: ${address}`);
+        }
+
         // 아티클 수신 날짜 UTC to KST 변환
         const KR_TIME_DIFF = 9 * 60 * 60 * 1000;
         const utcDate = new Date(parsedEmail.date);
         const kstDate = new Date(utcDate.getTime() + KR_TIME_DIFF);
-        const stringifyHTML = parsedEmail.html as string;
+
+        // HTML 본문 처리 (기존 로직 + null 체크만 추가)
+        const stringifyHTML = (parsedEmail.html ||
+          parsedEmail.text ||
+          '') as string;
+
         // 본문 미리보기 텍스트 생성
         const firstTwoBody = await this.extractTwoSentenceOfArticle(
           stringifyHTML,
@@ -74,11 +99,11 @@ export class ArticlesService {
         // 아티클 생성
         const article = await this.prisma.article.create({
           data: {
-            title: parsedEmail.subject,
+            title: parsedEmail.subject || '제목 없음',
             body: stringifyHTML
               .replace(/"/g, '"')
               .replace(/\n/g, '\n') as string,
-            firstTwoBody,
+            firstTwoBody: firstTwoBody || '',
             plainBody,
             date: utcDate,
             publishYear: kstDate.getUTCFullYear(),
@@ -123,7 +148,7 @@ export class ArticlesService {
           });
         }
         // 3. "구독 중지 중" 뉴스레터인 경우
-        if (isSubscribed.status === 'PAUSED') {
+        if (isSubscribed && isSubscribed.status === 'PAUSED') {
           await this.prisma.article.update({
             where: {
               id: article.id,
