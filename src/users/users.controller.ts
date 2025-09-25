@@ -162,7 +162,7 @@ export class UsersController {
           id: 1,
           loginId: 'newdok',
           phoneNumber: '01012345678',
-          subscribeEmail: 'newdok@newdok.site',
+          subscribeEmail: 'newdok@newdok.store',
           nickname: '뉴독',
           birthYear: '1997',
           gender: '남자',
