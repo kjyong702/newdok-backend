@@ -364,4 +364,25 @@ export class ArticlesController {
   async getUserReceivedArticleCount(@Req() req: any) {
     return this.articlesService.getUserReceivedArticleCount(req.user.id);
   }
+
+  @ApiOperation({
+    summary: '메일 서버에서 아티클 즉시 동기화 (POP3 실행)',
+    description:
+      'Cron 스케줄러를 기다리지 않고, 메일 서버에서 POP3로 모든 유저의 새 아티클을 즉시 가져옵니다.',
+  })
+  @ApiBearerAuth()
+  @UseGuards(AuthGuard)
+  @ApiOkResponse({
+    description: 'POP3 동기화 작업이 시작되었습니다.',
+    schema: {
+      example: {
+        message: 'POP3 동기화 작업이 완료되었습니다.',
+      },
+    },
+  })
+  @Post('/refresh')
+  async refreshArticles() {
+    await this.articlesService.POP3();
+    return { message: 'POP3 동기화 작업이 완료되었습니다.' };
+  }
 }
