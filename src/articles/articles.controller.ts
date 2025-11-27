@@ -28,9 +28,9 @@ export class ArticlesController {
   constructor(private articlesService: ArticlesService) {}
 
   @ApiOperation({
-    summary: '날짜별 아티클 조회',
+    summary: '월 단위 날짜별 아티클 존재 여부 조회',
     description:
-      '선택한 발행 연도와 월에 따라 날짜별로 그룹화된 아티클을 조회합니다.',
+      '선택한 발행 연도와 월에 대해, 각 날짜별로 아티클 존재 여부 및 개수를 조회합니다.',
   })
   @ApiQuery({
     name: 'year',
@@ -47,37 +47,21 @@ export class ArticlesController {
   @ApiBearerAuth()
   @UseGuards(AuthGuard)
   @ApiOkResponse({
-    description: '선택된 연도와 월에 따른 날짜별 아티클 조회 성공',
+    description: '선택된 연도와 월에 따른 날짜별 아티클 존재 여부 조회 성공',
     schema: {
       example: {
         data: [
           {
-            id: 1,
             publishDate: 5,
-            receivedUnread: 1,
-            receivedArticleList: [
-              {
-                brandName: '머니레터',
-                imageUrl: '',
-                articleTitle: 'A-Z, 시민단체 보조금 논란',
-                articleId: 1,
-                status: 'Unread',
-              },
-            ],
+            hasArticles: true,
+            totalCount: 3,
+            unreadCount: 1,
           },
           {
-            id: 2,
             publishDate: 6,
-            receivedUnread: 1,
-            receivedArticleList: [
-              {
-                brandName: '머니레터',
-                imageUrl: '',
-                articleTitle: 'A-Z, 시민단체 보조금 논란',
-                articleId: 1,
-                status: 'Unread',
-              },
-            ],
+            hasArticles: false,
+            totalCount: 0,
+            unreadCount: 0,
           },
         ],
       },
@@ -123,6 +107,63 @@ export class ArticlesController {
   @Get('/today')
   async getTodayArticles(@Req() req: any) {
     return this.articlesService.getTodayArticles(req.user.id);
+  }
+
+  @ApiOperation({
+    summary: '특정 일자 아티클 조회',
+    description:
+      '선택한 발행 연도, 월, 일에 대해 해당 날짜에 수신 받은 아티클을 조회합니다.',
+  })
+  @ApiQuery({
+    name: 'year',
+    description: '아티클 발행연도',
+    type: 'string',
+    example: '2024',
+  })
+  @ApiQuery({
+    name: 'publicationMonth',
+    description: '아티클 발행월 (1월~12월)',
+    type: 'string',
+    example: '1',
+  })
+  @ApiQuery({
+    name: 'publicationDate',
+    description: '아티클 발행일 (1~31)',
+    type: 'string',
+    example: '15',
+  })
+  @ApiBearerAuth()
+  @UseGuards(AuthGuard)
+  @ApiOkResponse({
+    description: '특정 일자에 수신 받은 아티클 조회 성공',
+    schema: {
+      example: [
+        {
+          id: 1,
+          title: 'A-Z, 시민단체 보조금 논란',
+          publishDate: 5,
+          status: 'Unread',
+          newsletter: {
+            brandName: '머니레터',
+            imageUrl: '',
+          },
+        },
+      ],
+    },
+  })
+  @Get('/day')
+  async getArticlesByDay(
+    @Query('year') year: string,
+    @Query('publicationMonth') publicationMonth: string,
+    @Query('publicationDate') publicationDate: string,
+    @Req() req: any,
+  ) {
+    return this.articlesService.getArticlesByDay(
+      year,
+      publicationMonth,
+      publicationDate,
+      req.user.id,
+    );
   }
 
   @ApiOperation({
