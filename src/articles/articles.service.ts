@@ -206,47 +206,39 @@ export class ArticlesService {
         ],
       },
       select: {
-        id: true,
         title: true,
         publishDate: true,
         status: true,
-        newsletter: {
-          select: {
-            brandName: true,
-            imageUrl: true,
-          },
-        },
       },
     });
 
-    // 날짜별 아티클 그룹화
-    const articlesGroupedByDate = Array(31)
+    // 날짜별 아티클 존재 여부 및 개수 계산
+    const resultByDate = Array(31)
       .fill(null)
       .map(() => ({
-        receivedUnread: 0,
-        receivedArticleList: [],
+        hasArticles: false,
+        totalCount: 0,
+        unreadCount: 0,
       }));
 
     articles.forEach((article) => {
-      articlesGroupedByDate[article.publishDate - 1].receivedArticleList.push({
-        brandName: article.newsletter.brandName,
-        imageUrl: article.newsletter.imageUrl,
-        articleTitle: article.title,
-        articleId: article.id,
-        status: article.status,
-      });
-      if (article.status === 'Unread')
-        articlesGroupedByDate[article.publishDate - 1].receivedUnread++;
+      const idx = article.publishDate - 1;
+      if (idx < 0 || idx >= 31) return;
+
+      resultByDate[idx].hasArticles = true;
+      resultByDate[idx].totalCount++;
+      if (article.status === 'Unread') {
+        resultByDate[idx].unreadCount++;
+      }
     });
 
     return {
-      data: articlesGroupedByDate.map((data, index) => {
-        return {
-          publishDate: index + 1,
-          receivedUnread: data.receivedUnread,
-          receivedArticleList: data.receivedArticleList,
-        };
-      }),
+      data: resultByDate.map((data, index) => ({
+        publishDate: index + 1,
+        hasArticles: data.hasArticles,
+        totalCount: data.totalCount,
+        unreadCount: data.unreadCount,
+      })),
     };
   }
 
@@ -279,6 +271,40 @@ export class ArticlesService {
     });
 
     return todayArticles;
+  }
+
+  // 특정 일자 아티클 조회
+  async getArticlesByDay(
+    year: string,
+    publicationMonth: string,
+    publicationDate: string,
+    userId: number,
+  ) {
+    const articles = await this.prisma.article.findMany({
+      where: {
+        AND: [
+          { isVisible: true },
+          { publishYear: parseInt(year, 10) },
+          { publishMonth: parseInt(publicationMonth, 10) },
+          { publishDate: parseInt(publicationDate, 10) },
+          { userId },
+        ],
+      },
+      select: {
+        id: true,
+        title: true,
+        publishDate: true,
+        status: true,
+        newsletter: {
+          select: {
+            brandName: true,
+            imageUrl: true,
+          },
+        },
+      },
+    });
+
+    return articles;
   }
 
   // 아티클 읽기
