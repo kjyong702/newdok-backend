@@ -59,6 +59,24 @@ jobs:
             git fetch origin dev
             git reset --hard origin/dev
 
+            # Ensure a Prisma 7 compatible Node.js is available on the server
+            export NVM_DIR=\"$HOME/.nvm\"
+            if [ ! -s \"$NVM_DIR/nvm.sh\" ]; then
+              curl -fsSL https://raw.githubusercontent.com/nvm-sh/nvm/v0.39.7/install.sh | bash
+            fi
+            # shellcheck disable=SC1091
+            . \"$NVM_DIR/nvm.sh\"
+            nvm install 22.12.0
+            nvm use 22.12.0
+            nvm alias default 22.12.0
+            node -v
+            npm -v
+
+            # Allow binding to privileged ports (e.g. 80) without running the app as root
+            sudo apt-get update -y
+            sudo apt-get install -y libcap2-bin
+            sudo setcap cap_net_bind_service=+ep \"$(command -v node)\" || true
+
             npm ci
             npx prisma generate
             # If dist was previously created by sudo/root, clean it to avoid EACCES during build
@@ -66,13 +84,17 @@ jobs:
             npm run build
 
             # Avoid killing all PM2 processes; restart only this app.
-            if sudo pm2 describe newdok-dev >/dev/null 2>&1; then
-              sudo pm2 restart newdok-dev --update-env
-            else
-              sudo pm2 start dist/main.js --name newdok-dev --time
+            if ! command -v pm2 >/dev/null 2>&1; then
+              npm i -g pm2
             fi
 
-            sudo pm2 save
+            if pm2 describe newdok-dev >/dev/null 2>&1; then
+              pm2 restart newdok-dev --update-env
+            else
+              pm2 start dist/main.js --name newdok-dev --time
+            fi
+
+            pm2 save
           "'
 
   prod-deploy:
