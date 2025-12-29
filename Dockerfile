@@ -1,10 +1,10 @@
-FROM node:20
+FROM node:22.12.0
 
 WORKDIR /usr/src/newdok-backend
 
 COPY . .
 
-RUN npm install
+RUN npm ci
 RUN npx prisma generate
 RUN npm run build
 
