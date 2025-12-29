@@ -23,13 +23,16 @@ jobs:
     runs-on: ubuntu-22.04
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
       - name: Node.js setup
-        uses: actions/setup-node@v3
+        uses: actions/setup-node@v4
         with:
-          node_version: '20.x'
+          node-version: '22.12.0'
+          cache: 'npm'
       - name: Install npm packages
         run: npm ci
+      - name: Prisma generate (no DB needed)
+        run: npx prisma generate
       - name: test build
         run: npm run build
 
@@ -49,16 +52,28 @@ jobs:
           chmod 644 ~/.ssh/known_hosts
       - name: SSH and deploy
         run: |
-          ssh ${{ secrets.SSH_DEV_USERNAME }}@${{ secrets.SSH_DEV_PUBLIC_IP }} "
-          cd newdok-backend
-          git pull origin dev
-          npm install
-          npx prisma generate
-          npm run build
-          sudo pm2 kill
-          npm run deploy:dev
-          exit
-          "
+          ssh ${{ secrets.SSH_DEV_USERNAME }}@${{ secrets.SSH_DEV_PUBLIC_IP }} 'bash -lc "
+            set -euo pipefail
+
+            cd ~/newdok-backend
+            git fetch origin dev
+            git reset --hard origin/dev
+
+            npm ci
+            npx prisma generate
+            # If dist was previously created by sudo/root, clean it to avoid EACCES during build
+            sudo rm -rf dist || true
+            npm run build
+
+            # Avoid killing all PM2 processes; restart only this app.
+            if sudo pm2 describe newdok-dev >/dev/null 2>&1; then
+              sudo pm2 restart newdok-dev --update-env
+            else
+              sudo pm2 start dist/main.js --name newdok-dev --time
+            fi
+
+            sudo pm2 save
+          "'
 
   prod-deploy:
     runs-on: ubuntu-latest
