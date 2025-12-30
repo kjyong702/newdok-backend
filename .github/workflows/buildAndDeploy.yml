@@ -10,26 +10,21 @@ permissions:
   id-token: write
   contents: read
 
-env:
-  AWS_REGION: ap-northeast-2
-  ECR_REPOSITORY: newdok
-  ECS_SERVICE: newdok-service
-  ECS_CLUSTER: newdok-cluster
-  ECS_TASK_DEFINITION: ./task_definition.json
-  CONTAINER_NAME: newdok
-
 jobs:
   build:
     runs-on: ubuntu-22.04
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
       - name: Node.js setup
-        uses: actions/setup-node@v3
+        uses: actions/setup-node@v4
         with:
-          node_version: '20.x'
+          node-version: '22.12.0'
+          cache: 'npm'
       - name: Install npm packages
         run: npm ci
+      - name: Prisma generate (no DB needed)
+        run: npx prisma generate
       - name: test build
         run: npm run build
 
@@ -49,21 +44,28 @@ jobs:
           chmod 644 ~/.ssh/known_hosts
       - name: SSH and deploy
         run: |
-          ssh ${{ secrets.SSH_DEV_USERNAME }}@${{ secrets.SSH_DEV_PUBLIC_IP }} "
-          cd newdok-backend
-          git pull origin dev
-          npm install
-          npx prisma generate
-          npm run build
-          sudo pm2 kill
-          npm run deploy:dev
-          exit
-          "
+          ssh ${{ secrets.SSH_DEV_USERNAME }}@${{ secrets.SSH_DEV_PUBLIC_IP }} 'bash -lc "
+            set -e
+            cd ~/newdok-backend
+            git pull origin dev
+            npm install
+            npx prisma generate
+            npm run build
+            sudo pm2 kill || true
+            npm run deploy:dev
+          "'
 
   prod-deploy:
     runs-on: ubuntu-latest
     if: github.ref == 'refs/heads/main'
     needs: build
+    env:
+      AWS_REGION: ap-northeast-2
+      ECR_REPOSITORY: newdok
+      ECS_SERVICE: newdok-service
+      ECS_CLUSTER: newdok-cluster
+      ECS_TASK_DEFINITION: ./task_definition.json
+      CONTAINER_NAME: newdok
     steps:
       - name: Checkout
         uses: actions/checkout@v4

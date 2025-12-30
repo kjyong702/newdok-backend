@@ -12,129 +12,181 @@ import { parse } from 'node-html-parser';
 export class ArticlesService {
   constructor(private prisma: PrismaService) {}
 
+  // POP3 작업 동시 실행 방지 플래그
+  private isPop3Running = false;
+
   // POP3 프로토콜 로직
   async POP3() {
-    const allUser = await this.prisma.user.findMany({
-      include: {
-        _count: {
-          select: { articles: true },
+    // 이미 POP3 작업이 실행 중이면 새 요청은 무시
+    if (this.isPop3Running) {
+      console.log('[POP3] 작업이 이미 실행 중이어서 새 요청을 건너뜁니다.');
+      return { message: 'POP3 작업이 이미 실행 중입니다.' };
+    }
+
+    this.isPop3Running = true;
+    try {
+      const allUser = await this.prisma.user.findMany({
+        include: {
+          _count: {
+            select: { articles: true },
+          },
         },
-      },
-    });
-    for (let i = 0; i < allUser.length; i++) {
-      const user = allUser[i];
-      const pop3 = new Pop3Command({
-        user: user.subscribeEmail,
-        password: user.subscribePassword,
-        host: 'mail.newdok.site',
       });
-      const emailList = await pop3.UIDL();
-      const numOfArticles = user._count.articles;
-      // 새롭게 수신한 POP3 이메일에 대해서만 파싱
-      for (let i = numOfArticles + 1; i <= emailList.length; i++) {
-        const rawEmail = await pop3.RETR(i);
-        const parsedEmail = await simpleParser(rawEmail);
-        const { address } = parsedEmail.from.value[0];
-        // 최대 3회까지 뉴스레터 브랜드 존재 여부 검사
-        let newsletter = await this.prisma.newsletter.findUnique({
-          where: {
-            brandEmail: address,
-          },
-        });
-        if (!newsletter) {
-          newsletter = await this.prisma.newsletter.findUnique({
-            where: {
-              secondEmail: address,
-            },
-          });
-        }
-        if (!newsletter) {
-          newsletter = await this.prisma.newsletter.findUnique({
-            where: {
-              thirdEmail: address,
-            },
-          });
-        }
-        // 아티클 수신 날짜 UTC to KST 변환
-        const KR_TIME_DIFF = 9 * 60 * 60 * 1000;
-        const utcDate = new Date(parsedEmail.date);
-        const kstDate = new Date(utcDate.getTime() + KR_TIME_DIFF);
-        const stringifyHTML = parsedEmail.html as string;
-        // 본문 미리보기 텍스트 생성
-        const firstTwoBody = await this.extractTwoSentenceOfArticle(
-          stringifyHTML,
-        );
-        // 아티클 본문에서 순수 텍스트 추출
-        const plainBody = stringifyHTML
-          .replace(/<style[^>]*>@media[\s\S]*?<\/style>/gi, '')
-          .replace(/<[^>]*>/g, ' ')
-          .replace(/\s+/g, ' ')
-          .trim();
 
-        // 아티클 생성
-        const article = await this.prisma.article.create({
-          data: {
-            title: parsedEmail.subject,
-            body: stringifyHTML
-              .replace(/"/g, '"')
-              .replace(/\n/g, '\n') as string,
-            firstTwoBody,
-            plainBody,
-            date: utcDate,
-            publishYear: kstDate.getUTCFullYear(),
-            publishMonth: kstDate.getUTCMonth() + 1,
-            publishDate: kstDate.getUTCDate(),
-            userId: user.id,
-            newsletterId: newsletter.id,
-          },
+      // 유저 단위 병렬 처리 (배치 병렬 처리로 전체 속도 개선)
+      const CONCURRENCY = 3; // 동시에 처리할 유저 수 (필요하면 환경변수로 분리 가능)
+
+      const processUser = async (user: any) => {
+        // iwinv 웹메일 서비스 개편으로 POP3S(TLS) 연결 사용
+        const pop3 = new Pop3Command({
+          user: user.subscribeEmail,
+          password: user.subscribePassword,
+          host: 'mail.newdok.store',
+          port: 995,
+          tls: true,
         });
 
-        // 수신한 아티클 뉴스레터 구독 상태에 따른 처리
-        const isSubscribed = await this.prisma.newslettersOnUsers.findUnique({
-          where: {
-            userId_newsletterId: {
-              userId: user.id,
-              newsletterId: newsletter.id,
+        const emailList = await pop3.UIDL();
+        const numOfArticles = user._count.articles;
+
+        // 새롭게 수신한 POP3 이메일에 대해서만 파싱
+        for (let i = numOfArticles + 1; i <= emailList.length; i++) {
+          const rawEmail = await pop3.RETR(i);
+          const parsedEmail = await simpleParser(rawEmail);
+
+          // 디버깅: 이메일 헤더 정보 출력
+          console.log('=== 이메일 헤더 디버깅 ===');
+          console.log('From:', parsedEmail.from);
+          console.log('Reply-To:', parsedEmail.replyTo);
+          console.log('Return-Path:', parsedEmail.headers.get('return-path'));
+          console.log('Sender:', parsedEmail.headers.get('sender'));
+          console.log('Subject:', parsedEmail.subject);
+          console.log('========================');
+
+          const { address } = parsedEmail.from.value[0];
+          // 최대 3회까지 뉴스레터 브랜드 존재 여부 검사
+          let newsletter = await this.prisma.newsletter.findUnique({
+            where: {
+              brandEmail: address,
             },
-          },
-        });
-        // 1. "구독 전" 뉴스레터인 경우
-        if (!isSubscribed) {
-          await this.prisma.newslettersOnUsers.create({
+          });
+          if (!newsletter) {
+            newsletter = await this.prisma.newsletter.findUnique({
+              where: {
+                secondEmail: address,
+              },
+            });
+          }
+          if (!newsletter) {
+            newsletter = await this.prisma.newsletter.findUnique({
+              where: {
+                thirdEmail: address,
+              },
+            });
+          }
+
+          // 뉴스레터 브랜드를 찾을 수 없는 경우 에러 발생
+          if (!newsletter) {
+            throw new Error(`알 수 없는 뉴스레터 발신자: ${address}`);
+          }
+
+          // 아티클 수신 날짜 UTC to KST 변환
+          const KR_TIME_DIFF = 9 * 60 * 60 * 1000;
+          const utcDate = new Date(parsedEmail.date);
+          const kstDate = new Date(utcDate.getTime() + KR_TIME_DIFF);
+
+          // HTML 본문 처리 (기존 로직 + null 체크만 추가)
+          const stringifyHTML = (parsedEmail.html ||
+            parsedEmail.text ||
+            '') as string;
+
+          // 본문 미리보기 텍스트 생성
+          const firstTwoBody = await this.extractTwoSentenceOfArticle(
+            stringifyHTML,
+          );
+          // 아티클 본문에서 순수 텍스트 추출
+          const plainBody = stringifyHTML
+            .replace(/<style[^>]*>@media[\s\S]*?<\/style>/gi, '')
+            .replace(/<[^>]*>/g, ' ')
+            .replace(/\s+/g, ' ')
+            .trim();
+
+          // 아티클 생성
+          const article = await this.prisma.article.create({
             data: {
+              title: parsedEmail.subject || '제목 없음',
+              body: stringifyHTML
+                .replace(/"/g, '"')
+                .replace(/\n/g, '\n') as string,
+              firstTwoBody: firstTwoBody || '',
+              plainBody,
+              date: utcDate,
+              publishYear: kstDate.getUTCFullYear(),
+              publishMonth: kstDate.getUTCMonth() + 1,
+              publishDate: kstDate.getUTCDate(),
               userId: user.id,
               newsletterId: newsletter.id,
-              status: newsletter.doubleCheck === true ? 'CHECK' : 'CONFIRMED',
             },
           });
-        }
-        // 2. "구독 확인 중" 뉴스레터인 경우
-        if (isSubscribed && isSubscribed.status === 'CHECK') {
-          await this.prisma.newslettersOnUsers.update({
+
+          // 수신한 아티클 뉴스레터 구독 상태에 따른 처리
+          const isSubscribed = await this.prisma.newslettersOnUsers.findUnique({
             where: {
               userId_newsletterId: {
                 userId: user.id,
                 newsletterId: newsletter.id,
               },
             },
-            data: {
-              status: 'CONFIRMED',
-            },
           });
+          // 1. "구독 전" 뉴스레터인 경우
+          if (!isSubscribed) {
+            await this.prisma.newslettersOnUsers.create({
+              data: {
+                userId: user.id,
+                newsletterId: newsletter.id,
+                status: newsletter.doubleCheck === true ? 'CHECK' : 'CONFIRMED',
+              },
+            });
+          }
+          // 2. "구독 확인 중" 뉴스레터인 경우
+          if (isSubscribed && isSubscribed.status === 'CHECK') {
+            await this.prisma.newslettersOnUsers.update({
+              where: {
+                userId_newsletterId: {
+                  userId: user.id,
+                  newsletterId: newsletter.id,
+                },
+              },
+              data: {
+                status: 'CONFIRMED',
+              },
+            });
+          }
+          // 3. "구독 중지 중" 뉴스레터인 경우
+          if (isSubscribed && isSubscribed.status === 'PAUSED') {
+            await this.prisma.article.update({
+              where: {
+                id: article.id,
+              },
+              data: {
+                isVisible: false,
+              },
+            });
+          }
         }
-        // 3. "구독 중지 중" 뉴스레터인 경우
-        if (isSubscribed.status === 'PAUSED') {
-          await this.prisma.article.update({
-            where: {
-              id: article.id,
-            },
-            data: {
-              isVisible: false,
-            },
-          });
-        }
+
+        await pop3.QUIT();
+      };
+
+      // 배치 단위로 유저를 병렬 처리
+      for (let i = 0; i < allUser.length; i += CONCURRENCY) {
+        const batch = allUser.slice(i, i + CONCURRENCY);
+        await Promise.all(batch.map((user) => processUser(user)));
       }
-      await pop3.QUIT();
+
+      return { message: 'POP3 작업이 완료되었습니다.' };
+    } finally {
+      this.isPop3Running = false;
     }
   }
 
@@ -154,47 +206,39 @@ export class ArticlesService {
         ],
       },
       select: {
-        id: true,
         title: true,
         publishDate: true,
         status: true,
-        newsletter: {
-          select: {
-            brandName: true,
-            imageUrl: true,
-          },
-        },
       },
     });
 
-    // 날짜별 아티클 그룹화
-    const articlesGroupedByDate = Array(31)
+    // 날짜별 아티클 존재 여부 및 개수 계산
+    const resultByDate = Array(31)
       .fill(null)
       .map(() => ({
-        receivedUnread: 0,
-        receivedArticleList: [],
+        hasArticles: false,
+        totalCount: 0,
+        unreadCount: 0,
       }));
 
     articles.forEach((article) => {
-      articlesGroupedByDate[article.publishDate - 1].receivedArticleList.push({
-        brandName: article.newsletter.brandName,
-        imageUrl: article.newsletter.imageUrl,
-        articleTitle: article.title,
-        articleId: article.id,
-        status: article.status,
-      });
-      if (article.status === 'Unread')
-        articlesGroupedByDate[article.publishDate - 1].receivedUnread++;
+      const idx = article.publishDate - 1;
+      if (idx < 0 || idx >= 31) return;
+
+      resultByDate[idx].hasArticles = true;
+      resultByDate[idx].totalCount++;
+      if (article.status === 'Unread') {
+        resultByDate[idx].unreadCount++;
+      }
     });
 
     return {
-      data: articlesGroupedByDate.map((data, index) => {
-        return {
-          publishDate: index + 1,
-          receivedUnread: data.receivedUnread,
-          receivedArticleList: data.receivedArticleList,
-        };
-      }),
+      data: resultByDate.map((data, index) => ({
+        publishDate: index + 1,
+        hasArticles: data.hasArticles,
+        totalCount: data.totalCount,
+        unreadCount: data.unreadCount,
+      })),
     };
   }
 
@@ -227,6 +271,40 @@ export class ArticlesService {
     });
 
     return todayArticles;
+  }
+
+  // 특정 일자 아티클 조회
+  async getArticlesByDay(
+    year: string,
+    publicationMonth: string,
+    publicationDate: string,
+    userId: number,
+  ) {
+    const articles = await this.prisma.article.findMany({
+      where: {
+        AND: [
+          { isVisible: true },
+          { publishYear: parseInt(year, 10) },
+          { publishMonth: parseInt(publicationMonth, 10) },
+          { publishDate: parseInt(publicationDate, 10) },
+          { userId },
+        ],
+      },
+      select: {
+        id: true,
+        title: true,
+        publishDate: true,
+        status: true,
+        newsletter: {
+          select: {
+            brandName: true,
+            imageUrl: true,
+          },
+        },
+      },
+    });
+
+    return articles;
   }
 
   // 아티클 읽기
