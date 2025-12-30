@@ -10,14 +10,6 @@ permissions:
   id-token: write
   contents: read
 
-env:
-  AWS_REGION: ap-northeast-2
-  ECR_REPOSITORY: newdok
-  ECS_SERVICE: newdok-service
-  ECS_CLUSTER: newdok-cluster
-  ECS_TASK_DEFINITION: ./task_definition.json
-  CONTAINER_NAME: newdok
-
 jobs:
   build:
     runs-on: ubuntu-22.04
@@ -52,77 +44,28 @@ jobs:
           chmod 644 ~/.ssh/known_hosts
       - name: SSH and deploy
         run: |
-          ssh ${{ secrets.SSH_DEV_USERNAME }}@${{ secrets.SSH_DEV_PUBLIC_IP }} 'bash -s' <<'EOF'
-          set -euo pipefail
-          export CI=true
-          export NPM_CONFIG_FUND=false
-          export NPM_CONFIG_AUDIT=false
-          export NPM_CONFIG_LOGLEVEL=info
-
-          echo "=== [1/9] git sync ==="
-
-          cd ~/newdok-backend
-          git fetch origin dev
-          git reset --hard origin/dev
-
-          # Ensure a Prisma 7 compatible Node.js is available on the server
-          echo "=== [2/9] ensure curl ==="
-          if ! command -v curl >/dev/null 2>&1; then
-            sudo apt-get update -y
-            sudo apt-get install -y curl
-          fi
-
-          echo "=== [3/9] ensure node (nvm) ==="
-          export NVM_DIR="$HOME/.nvm"
-          if [ ! -s "$NVM_DIR/nvm.sh" ]; then
-            curl -fsSL https://raw.githubusercontent.com/nvm-sh/nvm/v0.39.7/install.sh | bash
-          fi
-          # shellcheck disable=SC1091
-          . "$NVM_DIR/nvm.sh"
-
-          nvm install 22.12.0
-          nvm use 22.12.0
-          nvm alias default 22.12.0
-          node -v
-          npm -v
-
-          # Allow binding to privileged ports (e.g. 80) without running the app as root
-          echo "=== [4/9] install libcap + setcap ==="
-          sudo apt-get update -y
-          sudo apt-get install -y libcap2-bin
-          sudo setcap cap_net_bind_service=+ep "$(command -v node)" || true
-
-          echo "=== [5/9] npm ci (timeout 15m) ==="
-          timeout 15m npm ci --no-fund --no-audit
-
-          echo "=== [6/9] prisma generate (timeout 5m) ==="
-          npx prisma generate
-
-          # If dist was previously created by sudo/root, clean it to avoid EACCES during build
-          echo "=== [7/9] clean dist + build ==="
-          sudo rm -rf dist || true
-          timeout 10m npm run build
-
-          # Avoid killing all PM2 processes; restart only this app.
-          echo "=== [8/9] pm2 restart/start ==="
-          if ! command -v pm2 >/dev/null 2>&1; then
-            npm i -g pm2
-          fi
-
-          if pm2 describe newdok-dev >/dev/null 2>&1; then
-            pm2 restart newdok-dev --update-env
-          else
-            pm2 start dist/main.js --name newdok-dev --time
-          fi
-
-          echo "=== [9/9] pm2 save ==="
-          pm2 save
-          EOF
+          ssh ${{ secrets.SSH_DEV_USERNAME }}@${{ secrets.SSH_DEV_PUBLIC_IP }} 'bash -lc "
+            set -e
+            cd ~/newdok-backend
+            git pull origin dev
+            npm install
+            npx prisma generate
+            npm run build
+            sudo pm2 kill || true
+            npm run deploy:dev
+          "'
 
   prod-deploy:
     runs-on: ubuntu-latest
     if: github.ref == 'refs/heads/main'
     needs: build
+    env:
+      AWS_REGION: ap-northeast-2
+      ECR_REPOSITORY: newdok
+      ECS_SERVICE: newdok-service
+      ECS_CLUSTER: newdok-cluster
+      ECS_TASK_DEFINITION: ./task_definition.json
+      CONTAINER_NAME: newdok
     steps:
       - name: Checkout
         uses: actions/checkout@v4
