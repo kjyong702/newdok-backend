@@ -80,4 +80,26 @@ export class SearchController {
   async searchArticles(@Query('keyword') keyword: string) {
     return await this.searchService.searchArticles(keyword);
   }
+
+  @ApiOperation({
+    summary: '인기 검색어 조회',
+    description:
+      '뉴스레터 브랜드 검색창에서 표시할 인기 검색어 상위 5개를 조회합니다. 현재는 고정된 검색어를 반환합니다.',
+  })
+  @ApiOkResponse({
+    description: '인기 검색어 목록',
+    schema: {
+      example: [
+        { rank: 1, keyword: 'NEWNEEK' },
+        { rank: 2, keyword: 'Daily Byte' },
+        { rank: 3, keyword: '뉴닉' },
+        { rank: 4, keyword: '테크' },
+        { rank: 5, keyword: '비즈니스' },
+      ],
+    },
+  })
+  @Get('/popular')
+  async getPopularSearchKeywords() {
+    return await this.searchService.getPopularSearchKeywords();
+  }
 }

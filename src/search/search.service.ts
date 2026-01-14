@@ -2,6 +2,16 @@ import { Injectable, BadRequestException } from '@nestjs/common';
 import { PrismaService } from 'src/prisma.service';
 import { parse } from 'node-html-parser';
 
+// 인기 검색어 상수 (임시 데이터)
+// TODO: 추후 검색어 count 기반으로 동적 조회하도록 변경 예정
+const POPULAR_SEARCH_KEYWORDS = [
+  'NEWNEEK',
+  'Daily Byte',
+  '뉴닉',
+  '테크',
+  '비즈니스',
+];
+
 @Injectable()
 export class SearchService {
   constructor(private prisma: PrismaService) {}
@@ -28,6 +38,18 @@ export class SearchService {
     `;
 
     return searchedNewsletters;
+  }
+
+  /**
+   * 인기 검색어 조회
+   * 현재는 고정된 검색어 5개를 반환합니다.
+   * TODO: 추후 검색어 count 기반으로 상위 5개 동적 조회하도록 변경 예정
+   */
+  async getPopularSearchKeywords() {
+    return POPULAR_SEARCH_KEYWORDS.map((keyword, index) => ({
+      rank: index + 1,
+      keyword,
+    }));
   }
 
   async searchArticles(keyword: string) {
