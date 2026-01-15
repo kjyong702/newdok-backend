@@ -82,9 +82,104 @@ export class NewslettersController {
   }
 
   @ApiOperation({
-    summary: '개인화 추천 뉴스레터(회원)',
+    summary: '최선 결과 조회 (교집합)',
     description:
-      '유저가 미리 설정한 산업군, 관심사에 기반하여 뉴스레터 브랜드를 추천한다.',
+      '유저가 미리 설정한 산업군과 관심사의 교집합에 해당하는 뉴스레터 브랜드를 추천합니다.',
+  })
+  @ApiBearerAuth()
+  @UseGuards(AuthGuard)
+  @ApiOkResponse({
+    description: '최선 결과 뉴스레터 리스트 조회 성공',
+    schema: {
+      example: [
+        {
+          id: 2,
+          brandName: 'Daily Byte',
+          firstDescription:
+            '꼭 알아야 할 비즈니스・경제 이슈, 데일리바이트에서 핵심만 쉽게',
+          secondDescription: '가장 쉽고 똑똑한 비즈니스 뉴스 읽기',
+          publicationCycle: '매주 평일 오전 6시',
+          subscribeUrl: 'https://page.stibee.com/subscriptions/81111',
+          imageUrl: 'https://newdok.shop/public/Daily Byte.png',
+          createdAt: '2023-07-15T07:30:42.996Z',
+          updatedAt: '2023-09-27T07:13:17.112Z',
+          industries: [
+            {
+              id: 2,
+              name: 'F&B',
+            },
+          ],
+          interests: [
+            {
+              id: 1,
+              name: '경제・시사',
+            },
+          ],
+        },
+      ],
+    },
+  })
+  @Get('/recommend/intersection')
+  async getIntersectionNewsletters(@Req() req: any) {
+    return this.newslettersService.getIntersectionNewsletters(req.user.id);
+  }
+
+  @ApiOperation({
+    summary: '차선 결과 조회 (합집합)',
+    description:
+      '유저가 미리 설정한 산업군과 관심사의 합집합에 해당하는 뉴스레터 브랜드를 최대 6개 랜덤으로 추천합니다.',
+  })
+  @ApiBearerAuth()
+  @UseGuards(AuthGuard)
+  @ApiOkResponse({
+    description: '차선 결과 뉴스레터 리스트 조회 성공 (최대 6개)',
+    schema: {
+      example: [
+        {
+          id: 4,
+          brandName: '외계레터',
+          firstDescription:
+            '당신만을 위한 외식업 세계,  지구인의 외식업 문화 연구 이야기',
+          secondDescription: '당신만을 위한 외식업 세계의 이야기',
+          publicationCycle: '매주 금요일',
+          subscribeUrl: 'https://foodworld-letter.stibee.com/subscribe/',
+          imageUrl: 'https://newdok.shop/public/외계레터.png',
+          createdAt: '2023-07-15T07:30:42.996Z',
+          updatedAt: '2023-09-27T07:13:17.112Z',
+          industries: [
+            {
+              id: 2,
+              name: 'F&B',
+            },
+            {
+              id: 11,
+              name: '유통・무역',
+            },
+          ],
+          interests: [
+            {
+              id: 4,
+              name: '트렌드',
+            },
+            {
+              id: 11,
+              name: '푸드・드링크',
+            },
+          ],
+        },
+      ],
+    },
+  })
+  @Get('/recommend/union')
+  async getUnionNewsletters(@Req() req: any) {
+    return this.newslettersService.getUnionNewsletters(req.user.id);
+  }
+
+  @ApiOperation({
+    summary: '개인화 추천 뉴스레터(회원) - Deprecated',
+    description:
+      '유저가 미리 설정한 산업군, 관심사에 기반하여 뉴스레터 브랜드를 추천한다. 성능 개선을 위해 /recommend/intersection과 /recommend/union을 분리하여 사용하세요.',
+    deprecated: true,
   })
   @ApiBearerAuth()
   @UseGuards(AuthGuard)

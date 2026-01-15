@@ -5,6 +5,212 @@ import { PrismaService } from '../prisma.service';
 export class NewslettersService {
   constructor(private prisma: PrismaService) {}
 
+  /**
+   * 유저 정보 조회 및 검증 (공통 로직)
+   */
+  private async getUserWithValidation(userId: number) {
+    const user = await this.prisma.user.findUnique({
+      where: {
+        id: userId,
+      },
+      include: {
+        interests: true,
+      },
+    });
+
+    if (!user.industryId) {
+      throw new BadRequestException('종사산업 미선택 유저입니다');
+    }
+    const interestIds = user.interests.map((data) => data.interestId);
+    if (interestIds.length === 0) {
+      throw new BadRequestException('관심사 미선택 유저입니다');
+    }
+
+    return { user, interestIds };
+  }
+
+  /**
+   * 최선 결과 조회 (산업군-관심사의 교집합)
+   */
+  async getIntersectionNewsletters(userId: number) {
+    const { user, interestIds } = await this.getUserWithValidation(userId);
+
+    const intersection = await this.prisma.newsletter.findMany({
+      where: {
+        AND: [
+          {
+            industries: {
+              some: {
+                id: user.industryId,
+              },
+            },
+          },
+          {
+            interests: {
+              some: {
+                id: { in: interestIds },
+              },
+            },
+          },
+          {
+            temporaryMiss: false,
+          },
+        ],
+        NOT: {
+          users: {
+            some: { userId },
+          },
+        },
+      },
+      select: {
+        id: true,
+        brandName: true,
+        firstDescription: true,
+        secondDescription: true,
+        publicationCycle: true,
+        subscribeUrl: true,
+        imageUrl: true,
+        createdAt: true,
+        updatedAt: true,
+        industries: true,
+        interests: true,
+      },
+    });
+
+    return intersection;
+  }
+
+  /**
+   * 차선 결과 조회 (산업군-관심사의 합집합, 최대 6개 랜덤)
+   */
+  async getUnionNewsletters(userId: number) {
+    const { user, interestIds } = await this.getUserWithValidation(userId);
+
+    // 교집합 ID 조회 (제외하기 위해)
+    const intersection = await this.prisma.newsletter.findMany({
+      where: {
+        AND: [
+          {
+            industries: {
+              some: {
+                id: user.industryId,
+              },
+            },
+          },
+          {
+            interests: {
+              some: {
+                id: { in: interestIds },
+              },
+            },
+          },
+          {
+            temporaryMiss: false,
+          },
+        ],
+        NOT: {
+          users: {
+            some: { userId },
+          },
+        },
+      },
+      select: {
+        id: true,
+      },
+    });
+    const intersectionIds = intersection.map((newsletter) => newsletter.id);
+
+    // 산업군에 해당하는 뉴스레터
+    const union1 = await this.prisma.newsletter.findMany({
+      where: {
+        AND: [
+          {
+            industries: {
+              some: {
+                id: user.industryId,
+              },
+            },
+          },
+          {
+            temporaryMiss: false,
+          },
+        ],
+        NOT: {
+          users: {
+            some: { userId },
+          },
+        },
+      },
+      select: {
+        id: true,
+      },
+    });
+    const ids1 = union1.map((newsletter) => newsletter.id);
+
+    // 관심사에 해당하는 뉴스레터
+    const union2 = await this.prisma.newsletter.findMany({
+      where: {
+        AND: [
+          {
+            interests: {
+              some: {
+                id: { in: interestIds },
+              },
+            },
+          },
+          {
+            temporaryMiss: false,
+          },
+        ],
+        NOT: {
+          users: {
+            some: { userId },
+          },
+        },
+      },
+      select: {
+        id: true,
+      },
+    });
+    const ids2 = union2.map((newsletter) => newsletter.id);
+
+    // 합집합에서 교집합 제외
+    const unionIds = ids1.concat(ids2);
+    const set = new Set(unionIds);
+    const uniqueUnionIds = [...set].filter(
+      (unionId) => !intersectionIds.includes(unionId),
+    );
+
+    // 랜덤으로 섞기
+    const shuffledIds = uniqueUnionIds.sort(() => Math.random() - 0.5);
+    const selectedIds = shuffledIds.slice(0, 6);
+
+    const union = await this.prisma.newsletter.findMany({
+      where: {
+        id: { in: selectedIds },
+      },
+      select: {
+        id: true,
+        brandName: true,
+        firstDescription: true,
+        secondDescription: true,
+        publicationCycle: true,
+        subscribeUrl: true,
+        imageUrl: true,
+        createdAt: true,
+        updatedAt: true,
+        industries: true,
+        interests: true,
+      },
+    });
+
+    return union;
+  }
+
+  /**
+   * @deprecated 최선/차선 결과를 함께 반환하는 기존 메서드입니다.
+   * 성능 개선을 위해 getIntersectionNewsletters와 getUnionNewsletters를 분리하여 사용하세요.
+   */
   async getRecommendedNewsletters(userId: number) {
     const user = await this.prisma.user.findUnique({
       where: {
