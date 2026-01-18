@@ -46,10 +46,19 @@ export class SearchService {
    * TODO: 추후 검색어 count 기반으로 상위 5개 동적 조회하도록 변경 예정
    */
   async getPopularSearchKeywords() {
-    return POPULAR_SEARCH_KEYWORDS.map((keyword, index) => ({
-      rank: index + 1,
-      keyword,
-    }));
+    // TODO: 추후 자동 갱신 로직 추가 시 실제 업데이트 날짜로 변경 예정
+    const updatedDate = new Date();
+    const month = String(updatedDate.getMonth() + 1).padStart(2, '0');
+    const day = String(updatedDate.getDate()).padStart(2, '0');
+    const formattedDate = `${month}.${day}`;
+
+    return {
+      updatedDate: formattedDate,
+      keywords: POPULAR_SEARCH_KEYWORDS.map((keyword, index) => ({
+        rank: index + 1,
+        keyword,
+      })),
+    };
   }
 
   async searchArticles(keyword: string) {

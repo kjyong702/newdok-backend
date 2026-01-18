@@ -89,13 +89,16 @@ export class SearchController {
   @ApiOkResponse({
     description: '인기 검색어 목록',
     schema: {
-      example: [
-        { rank: 1, keyword: 'NEWNEEK' },
-        { rank: 2, keyword: 'Daily Byte' },
-        { rank: 3, keyword: '뉴닉' },
-        { rank: 4, keyword: '테크' },
-        { rank: 5, keyword: '비즈니스' },
-      ],
+      example: {
+        updatedDate: '11.21',
+        keywords: [
+          { rank: 1, keyword: 'NEWNEEK' },
+          { rank: 2, keyword: 'Daily Byte' },
+          { rank: 3, keyword: '뉴닉' },
+          { rank: 4, keyword: '테크' },
+          { rank: 5, keyword: '비즈니스' },
+        ],
+      },
     },
   })
   @Get('/popular')
