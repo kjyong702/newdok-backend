@@ -99,18 +99,25 @@ export class UsersService {
     interestIds: string[],
     userId: number,
   ) {
-    // 1. User - Interest 관계: InterestOnUsers 테이블 데이터 생성
-    for (const id of interestIds) {
+    // 1. 기존 관심사 관계 삭제 (중복 방지)
+    await this.prisma.interestsOnUsers.deleteMany({
+      where: {
+        userId,
+      },
+    });
+
+    // 2. User - Interest 관계: InterestOnUsers 테이블 데이터 생성
+    if (interestIds.length > 0) {
       await this.prisma.interestsOnUsers.createMany({
-        data: [
-          {
-            userId,
-            interestId: parseInt(id),
-          },
-        ],
+        data: interestIds.map((id) => ({
+          userId,
+          interestId: parseInt(id),
+        })),
+        skipDuplicates: true, // 중복 방지 (안전장치)
       });
     }
-    // 2. User - Industry 관계
+
+    // 3. User - Industry 관계 업데이트
     const updatedUser = await this.prisma.user.update({
       where: {
         id: userId,
@@ -223,19 +230,24 @@ export class UsersService {
   }
 
   async changeInterest(newInterestIds: number[], userId: number) {
-    // 1. 유저 관심사 일괄 삭제
+    // 1. 중복 제거
+    const uniqueInterestIds = [...new Set(newInterestIds)];
+
+    // 2. 유저 관심사 일괄 삭제
     await this.prisma.interestsOnUsers.deleteMany({
       where: {
         userId,
       },
     });
-    // 2. 유저 관심사 각각 재생성
-    for (const newInterestId of newInterestIds) {
-      await this.prisma.interestsOnUsers.create({
-        data: {
+
+    // 3. 유저 관심사 일괄 재생성
+    if (uniqueInterestIds.length > 0) {
+      await this.prisma.interestsOnUsers.createMany({
+        data: uniqueInterestIds.map((interestId) => ({
           userId,
-          interestId: newInterestId,
-        },
+          interestId,
+        })),
+        skipDuplicates: true, // 중복 방지 (안전장치)
       });
     }
     const updatedUser = await this.prisma.user.findUnique({
