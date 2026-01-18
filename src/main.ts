@@ -13,7 +13,7 @@ async function bootstrap() {
       whitelist: true,
     }),
   );
-  app.useStaticAssets(join(__dirname, '..', 'public'), { prefix: '/public' });
+  app.useStaticAssets(join(__dirname, '..', '..', 'public'), { prefix: '/public' });
   app.enableCors({
     origin: ['https://newdok.vercel.app', 'http://localhost:3000'],
   });
