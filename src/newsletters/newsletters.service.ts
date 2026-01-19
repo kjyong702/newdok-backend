@@ -451,21 +451,39 @@ export class NewslettersService {
     let industryIds: number[];
     let dayIds: number[];
 
-    if (!industries) {
-      industryIds = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14];
+    // industryId가 0이거나 ['0']인 경우 모든 Industry ID 조회
+    const isAllIndustries =
+      !industries ||
+      (Array.isArray(industries) && industries.length === 0) ||
+      (typeof industries === 'string' && industries === '0') ||
+      (Array.isArray(industries) &&
+        industries.length === 1 &&
+        industries[0] === '0');
+
+    if (isAllIndustries) {
+      const allIndustries = await this.prisma.industry.findMany({
+        select: { id: true },
+      });
+      industryIds = allIndustries.map((industry) => industry.id);
     } else {
       industryIds =
         typeof industries === 'string'
           ? [parseInt(industries)]
-          : industries.map((industryId) => parseInt(industryId));
+          : industries
+              .map((industryId) => parseInt(industryId))
+              .filter((id) => !isNaN(id) && id !== 0);
     }
-    if (!days) {
-      dayIds = [1, 2, 3, 4, 5, 6, 7, 8];
+    // days가 없거나 빈 배열인 경우 모든 Day ID 조회
+    if (!days || (Array.isArray(days) && days.length === 0)) {
+      const allDays = await this.prisma.day.findMany({
+        select: { id: true },
+      });
+      dayIds = allDays.map((day) => day.id);
     } else {
       dayIds =
         typeof days === 'string'
           ? [parseInt(days)]
-          : days.map((dayId) => parseInt(dayId));
+          : days.map((dayId) => parseInt(dayId)).filter((id) => !isNaN(id));
     }
 
     // 1. 인기순 정렬 + 구독 중인 뉴스레터
@@ -678,21 +696,39 @@ export class NewslettersService {
     let industryIds: number[];
     let dayIds: number[];
 
-    if (!industries) {
-      industryIds = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16];
+    // industryId가 0이거나 ['0']인 경우 모든 Industry ID 조회
+    const isAllIndustries =
+      !industries ||
+      (Array.isArray(industries) && industries.length === 0) ||
+      (typeof industries === 'string' && industries === '0') ||
+      (Array.isArray(industries) &&
+        industries.length === 1 &&
+        industries[0] === '0');
+
+    if (isAllIndustries) {
+      const allIndustries = await this.prisma.industry.findMany({
+        select: { id: true },
+      });
+      industryIds = allIndustries.map((industry) => industry.id);
     } else {
       industryIds =
         typeof industries === 'string'
           ? [parseInt(industries)]
-          : industries.map((industryId) => parseInt(industryId));
+          : industries
+              .map((industryId) => parseInt(industryId))
+              .filter((id) => !isNaN(id) && id !== 0);
     }
-    if (!days) {
-      dayIds = [1, 2, 3, 4, 5, 6, 7, 8];
+    // days가 없거나 빈 배열인 경우 모든 Day ID 조회
+    if (!days || (Array.isArray(days) && days.length === 0)) {
+      const allDays = await this.prisma.day.findMany({
+        select: { id: true },
+      });
+      dayIds = allDays.map((day) => day.id);
     } else {
       dayIds =
         typeof days === 'string'
           ? [parseInt(days)]
-          : days.map((dayId) => parseInt(dayId));
+          : days.map((dayId) => parseInt(dayId)).filter((id) => !isNaN(id));
     }
 
     // 1. 인기순 정렬
