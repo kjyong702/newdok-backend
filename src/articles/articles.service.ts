@@ -1,8 +1,4 @@
-import {
-  Injectable,
-  BadRequestException,
-  NotFoundException,
-} from '@nestjs/common';
+import { Injectable } from '@nestjs/common';
 import { PrismaService } from '../prisma.service';
 import { simpleParser } from 'mailparser';
 import Pop3Command from 'node-pop3';
@@ -400,30 +396,8 @@ export class ArticlesService {
   async bookmarkArticle(articleId: string, userId: number) {
     const parsedArticleId = parseInt(articleId);
 
-    // 1. 아티클 존재 여부 및 소유자 확인
-    const article = await this.prisma.article.findUnique({
-      where: {
-        id: parsedArticleId,
-      },
-      select: {
-        id: true,
-        userId: true,
-        title: true,
-      },
-    });
-
-    if (!article) {
-      throw new NotFoundException('존재하지 않는 아티클입니다.');
-    }
-
-    if (article.userId !== userId) {
-      throw new BadRequestException(
-        '본인이 수신받은 아티클만 북마크할 수 있습니다.',
-      );
-    }
-
-    // 2. 현재 북마크 상태 확인
-    const isBookmarked = await this.prisma.bookmark.findUnique({
+    // 현재 북마크 상태 확인
+    const existingBookmark = await this.prisma.bookmark.findUnique({
       where: {
         userId_articleId: {
           userId,
@@ -432,63 +406,40 @@ export class ArticlesService {
       },
     });
 
-    // 3. 북마크 추가/삭제 처리
-    if (isBookmarked) {
-      // 북마크 삭제
-      await this.prisma.bookmark.delete({
-        where: {
-          userId_articleId: {
+    if (existingBookmark) {
+      // 북마크 삭제 + Article 업데이트 병렬 처리
+      await Promise.all([
+        this.prisma.bookmark.delete({
+          where: {
+            userId_articleId: {
+              userId,
+              articleId: parsedArticleId,
+            },
+          },
+        }),
+        this.prisma.article.update({
+          where: { id: parsedArticleId },
+          data: { isBookmarked: false },
+        }),
+      ]);
+
+      return { isBookmarked: false };
+    } else {
+      // 북마크 추가 + Article 업데이트 병렬 처리
+      await Promise.all([
+        this.prisma.bookmark.create({
+          data: {
             userId,
             articleId: parsedArticleId,
           },
-        },
-      });
-      await this.prisma.article.update({
-        where: {
-          id: parsedArticleId,
-        },
-        data: {
-          isBookmarked: false,
-        },
-      });
+        }),
+        this.prisma.article.update({
+          where: { id: parsedArticleId },
+          data: { isBookmarked: true },
+        }),
+      ]);
 
-      return {
-        success: true,
-        action: 'removed',
-        message: '북마크가 취소되었습니다.',
-        data: {
-          articleId: parsedArticleId,
-          articleTitle: article.title,
-          isBookmarked: false,
-        },
-      };
-    } else {
-      // 북마크 추가
-      await this.prisma.bookmark.create({
-        data: {
-          userId,
-          articleId: parsedArticleId,
-        },
-      });
-      await this.prisma.article.update({
-        where: {
-          id: parsedArticleId,
-        },
-        data: {
-          isBookmarked: true,
-        },
-      });
-
-      return {
-        success: true,
-        action: 'added',
-        message: '북마크가 추가되었습니다.',
-        data: {
-          articleId: parsedArticleId,
-          articleTitle: article.title,
-          isBookmarked: true,
-        },
-      };
+      return { isBookmarked: true };
     }
   }
 
