@@ -8,6 +8,7 @@ import { ArticlesModule } from './articles/articles.module';
 import { SchedulerModule } from './scheduler/scheduler.module';
 import { AuthModule } from './auth/auth.module';
 import { SearchModule } from './search/search.module';
+import { OptionsModule } from './options/options.module';
 
 @Module({
   imports: [
@@ -24,6 +25,7 @@ import { SearchModule } from './search/search.module';
     SchedulerModule,
     AuthModule,
     SearchModule,
+    OptionsModule,
   ],
   controllers: [AppController],
   providers: [AppService],
