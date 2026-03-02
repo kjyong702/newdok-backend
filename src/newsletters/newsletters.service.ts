@@ -353,7 +353,7 @@ export class NewslettersService {
   }
 
   async getNewsletterById(brandId: string, userId: number) {
-    const userIdOfDatabase = 27;
+    const userIdOfDatabase = 1;
 
     const newsletter = await this.prisma.newsletter.findUnique({
       where: {
@@ -403,7 +403,7 @@ export class NewslettersService {
   }
 
   async getNewsletterByIdForNonMember(brandId: string) {
-    const userIdOfDatabase = 27;
+    const userIdOfDatabase = 1;
 
     const newsletter = await this.prisma.newsletter.findUnique({
       where: {
