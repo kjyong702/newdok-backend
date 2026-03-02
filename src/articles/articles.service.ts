@@ -136,8 +136,15 @@ export class ArticlesService {
           });
           // 1. "구독 전" 뉴스레터인 경우
           if (!isSubscribed) {
-            await this.prisma.newslettersOnUsers.create({
-              data: {
+            await this.prisma.newslettersOnUsers.upsert({
+              where: {
+                userId_newsletterId: {
+                  userId: user.id,
+                  newsletterId: newsletter.id,
+                },
+              },
+              update: {},
+              create: {
                 userId: user.id,
                 newsletterId: newsletter.id,
                 status: newsletter.doubleCheck === true ? 'CHECK' : 'CONFIRMED',
