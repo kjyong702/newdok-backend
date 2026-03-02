@@ -184,7 +184,7 @@ export class ArticlesService {
       // 배치 단위로 유저를 병렬 처리
       for (let i = 0; i < allUser.length; i += CONCURRENCY) {
         const batch = allUser.slice(i, i + CONCURRENCY);
-        await Promise.all(batch.map((user) => processUser(user)));
+        await Promise.allSettled(batch.map((user) => processUser(user)));
       }
 
       return { message: 'POP3 작업이 완료되었습니다.' };
