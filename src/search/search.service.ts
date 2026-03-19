@@ -16,15 +16,16 @@ const POPULAR_SEARCH_KEYWORDS = [
 export class SearchService {
   constructor(private prisma: PrismaService) {}
 
-  // 개선된 뉴스레터 검색 (띄어쓰기 무시 검색 지원)
+  // 개선된 뉴스레터 검색 (띄어쓰기 무시 검색 지원 + 산업군/관심사 태그 검색)
   async searchNewsletters(brandName: string) {
     if (!brandName.trim()) {
       throw new BadRequestException('검색어가 없습니다');
     }
 
-    // 브랜드명과 검색어 모두 띄어쓰기 제거 후 매칭 (대소문자 무시)
     const searchKeyword = brandName.replace(/\s+/g, '').toUpperCase();
-    const searchedNewsletters = await this.prisma.$queryRaw<
+
+    // 1. 브랜드명 매칭
+    const byBrandName = await this.prisma.$queryRaw<
       {
         id: number;
         brandName: string;
@@ -32,12 +33,41 @@ export class SearchService {
         imageUrl: string;
       }[]
     >`
-      SELECT id, brandName, firstDescription, imageUrl 
-      FROM Newsletter 
+      SELECT id, brandName, firstDescription, imageUrl
+      FROM Newsletter
       WHERE UPPER(REPLACE(brandName, ' ', '')) LIKE ${`%${searchKeyword}%`}
     `;
 
-    return searchedNewsletters;
+    // 2. 산업군/관심사 태그명 매칭
+    const trimmedKeyword = brandName.trim();
+    const byTag = await this.prisma.newsletter.findMany({
+      where: {
+        OR: [
+          { industries: { some: { name: { contains: trimmedKeyword } } } },
+          { interests: { some: { name: { contains: trimmedKeyword } } } },
+        ],
+        temporaryMiss: false,
+      },
+      select: {
+        id: true,
+        brandName: true,
+        firstDescription: true,
+        imageUrl: true,
+      },
+    });
+
+    // 3. 중복 제거 후 합치기 (브랜드명 매칭 우선)
+    const resultMap = new Map<number, (typeof byBrandName)[0]>();
+    for (const item of byBrandName) {
+      resultMap.set(item.id, item);
+    }
+    for (const item of byTag) {
+      if (!resultMap.has(item.id)) {
+        resultMap.set(item.id, item);
+      }
+    }
+
+    return [...resultMap.values()];
   }
 
   /**
