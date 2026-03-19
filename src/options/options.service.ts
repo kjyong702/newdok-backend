@@ -21,10 +21,18 @@ export class OptionsService {
       }),
     ]);
 
+    const subscriptionStatuses = [
+      { status: 'INITIAL', description: '구독 전' },
+      { status: 'CHECK', description: '구독 확인 중' },
+      { status: 'CONFIRMED', description: '구독 완료' },
+      { status: 'PAUSED', description: '구독 중지' },
+    ];
+
     return {
       industries,
       interests,
       days,
+      subscriptionStatuses,
     };
   }
 }
