@@ -8,7 +8,7 @@ const POPULAR_SEARCH_KEYWORDS = [
   'NEWNEEK',
   'Daily Byte',
   '뉴닉',
-  '테크',
+  '재테크',
   '비즈니스',
 ];
 
