@@ -10,6 +10,40 @@ export class ArticlesService {
 
   // POP3 작업 동시 실행 방지 플래그
   private isPop3Running = false;
+  private readonly POP3_COMMAND_TIMEOUT_MS = 30_000;
+  private readonly MAIL_PARSE_TIMEOUT_MS = 30_000;
+  private readonly DB_COMMAND_TIMEOUT_MS = 15_000;
+  private readonly POP3_QUIT_TIMEOUT_MS = 10_000;
+
+  private async withTimeout<T>(
+    promise: Promise<T>,
+    ms: number,
+    label: string,
+  ): Promise<T> {
+    let timeoutId: NodeJS.Timeout | undefined;
+
+    const timeoutPromise = new Promise<never>((_, reject) => {
+      timeoutId = setTimeout(() => {
+        reject(new Error(`${label} timeout after ${ms}ms`));
+      }, ms);
+    });
+
+    try {
+      return await Promise.race([promise, timeoutPromise]);
+    } finally {
+      if (timeoutId) {
+        clearTimeout(timeoutId);
+      }
+    }
+  }
+
+  private getErrorMessage(error: unknown): string {
+    if (error instanceof Error) {
+      return error.message;
+    }
+
+    return String(error);
+  }
 
   // POP3 프로토콜 로직
   async POP3() {
@@ -43,13 +77,42 @@ export class ArticlesService {
         });
 
         try {
-          const emailList = await pop3.UIDL();
+          console.log(`[POP3] 유저 ${user.subscribeEmail} 처리 시작`);
+
+          const emailList = await this.withTimeout(
+            pop3.UIDL(),
+            this.POP3_COMMAND_TIMEOUT_MS,
+            `[POP3] ${user.subscribeEmail} UIDL`,
+          );
           const numOfArticles = user._count.articles;
+
+          console.log(
+            `[POP3] 유저 ${user.subscribeEmail} 메일 ${emailList.length}개 / 저장된 아티클 ${numOfArticles}개`,
+          );
 
           // 새롭게 수신한 POP3 이메일에 대해서만 파싱
           for (let i = numOfArticles + 1; i <= emailList.length; i++) {
-            const rawEmail = await pop3.RETR(i);
-            const parsedEmail = await simpleParser(rawEmail);
+            console.log(
+              `[POP3] 유저 ${user.subscribeEmail} ${i}/${emailList.length} 메일 수신 시작`,
+            );
+
+            const rawEmail = await this.withTimeout(
+              pop3.RETR(i),
+              this.POP3_COMMAND_TIMEOUT_MS,
+              `[POP3] ${user.subscribeEmail} RETR ${i}`,
+            );
+            console.log(
+              `[POP3] 유저 ${user.subscribeEmail} ${i}/${emailList.length} RETR 완료`,
+            );
+
+            const parsedEmail = await this.withTimeout(
+              simpleParser(rawEmail),
+              this.MAIL_PARSE_TIMEOUT_MS,
+              `[POP3] ${user.subscribeEmail} parse ${i}`,
+            );
+            console.log(
+              `[POP3] 유저 ${user.subscribeEmail} ${i}/${emailList.length} 파싱 완료`,
+            );
 
             // 디버깅: 이메일 헤더 정보 출력
             console.log('=== 이메일 헤더 디버깅 ===');
@@ -60,27 +123,27 @@ export class ArticlesService {
             console.log('Subject:', parsedEmail.subject);
             console.log('========================');
 
-            const { address } = parsedEmail.from.value[0];
-            // 최대 3회까지 뉴스레터 브랜드 존재 여부 검사
-            let newsletter = await this.prisma.newsletter.findUnique({
-              where: {
-                brandEmail: address,
-              },
-            });
-            if (!newsletter) {
-              newsletter = await this.prisma.newsletter.findUnique({
-                where: {
-                  secondEmail: address,
-                },
-              });
+            const address = parsedEmail.from?.value?.[0]?.address?.trim();
+            if (!address) {
+              throw new Error('발신자 이메일 주소를 찾을 수 없습니다.');
             }
-            if (!newsletter) {
-              newsletter = await this.prisma.newsletter.findUnique({
+
+            const newsletter = await this.withTimeout(
+              this.prisma.newsletter.findFirst({
                 where: {
-                  thirdEmail: address,
+                  OR: [
+                    { brandEmail: address },
+                    { secondEmail: address },
+                    { thirdEmail: address },
+                  ],
                 },
-              });
-            }
+              }),
+              this.DB_COMMAND_TIMEOUT_MS,
+              `[POP3] ${user.subscribeEmail} newsletter lookup ${address}`,
+            );
+            console.log(
+              `[POP3] 유저 ${user.subscribeEmail} ${i}/${emailList.length} 뉴스레터 매칭 완료: ${address}`,
+            );
 
             // 뉴스레터 브랜드를 찾을 수 없는 경우 에러 발생
             if (!newsletter) {
@@ -109,85 +172,118 @@ export class ArticlesService {
               .trim();
 
             // 아티클 생성
-            const article = await this.prisma.article.create({
-              data: {
-                title: parsedEmail.subject || '제목 없음',
-                body: stringifyHTML
-                  .replace(/"/g, '"')
-                  .replace(/\n/g, '\n') as string,
-                firstTwoBody: firstTwoBody || '',
-                plainBody,
-                date: utcDate,
-                publishYear: kstDate.getUTCFullYear(),
-                publishMonth: kstDate.getUTCMonth() + 1,
-                publishDate: kstDate.getUTCDate(),
-                userId: user.id,
-                newsletterId: newsletter.id,
-              },
-            });
-
-            // 수신한 아티클 뉴스레터 구독 상태에 따른 처리
-            const isSubscribed =
-              await this.prisma.newslettersOnUsers.findUnique({
-                where: {
-                  userId_newsletterId: {
-                    userId: user.id,
-                    newsletterId: newsletter.id,
-                  },
-                },
-              });
-            // 1. "구독 전" 뉴스레터인 경우
-            if (!isSubscribed) {
-              await this.prisma.newslettersOnUsers.upsert({
-                where: {
-                  userId_newsletterId: {
-                    userId: user.id,
-                    newsletterId: newsletter.id,
-                  },
-                },
-                update: {},
-                create: {
+            const article = await this.withTimeout(
+              this.prisma.article.create({
+                data: {
+                  title: parsedEmail.subject || '제목 없음',
+                  body: stringifyHTML
+                    .replace(/"/g, '"')
+                    .replace(/\n/g, '\n') as string,
+                  firstTwoBody: firstTwoBody || '',
+                  plainBody,
+                  date: utcDate,
+                  publishYear: kstDate.getUTCFullYear(),
+                  publishMonth: kstDate.getUTCMonth() + 1,
+                  publishDate: kstDate.getUTCDate(),
                   userId: user.id,
                   newsletterId: newsletter.id,
-                  status:
-                    newsletter.doubleCheck === true ? 'CHECK' : 'CONFIRMED',
                 },
-              });
+              }),
+              this.DB_COMMAND_TIMEOUT_MS,
+              `[POP3] ${user.subscribeEmail} article create ${i}`,
+            );
+            console.log(
+              `[POP3] 유저 ${user.subscribeEmail} ${i}/${emailList.length} 아티클 저장 완료: ${article.id}`,
+            );
+
+            // 수신한 아티클 뉴스레터 구독 상태에 따른 처리
+            const isSubscribed = await this.withTimeout(
+              this.prisma.newslettersOnUsers.findUnique({
+                where: {
+                  userId_newsletterId: {
+                    userId: user.id,
+                    newsletterId: newsletter.id,
+                  },
+                },
+              }),
+              this.DB_COMMAND_TIMEOUT_MS,
+              `[POP3] ${user.subscribeEmail} subscription lookup ${newsletter.id}`,
+            );
+            // 1. "구독 전" 뉴스레터인 경우
+            if (!isSubscribed) {
+              await this.withTimeout(
+                this.prisma.newslettersOnUsers.upsert({
+                  where: {
+                    userId_newsletterId: {
+                      userId: user.id,
+                      newsletterId: newsletter.id,
+                    },
+                  },
+                  update: {},
+                  create: {
+                    userId: user.id,
+                    newsletterId: newsletter.id,
+                    status:
+                      newsletter.doubleCheck === true ? 'CHECK' : 'CONFIRMED',
+                  },
+                }),
+                this.DB_COMMAND_TIMEOUT_MS,
+                `[POP3] ${user.subscribeEmail} subscription upsert ${newsletter.id}`,
+              );
             }
             // 2. "구독 확인 중" 뉴스레터인 경우
             if (isSubscribed && isSubscribed.status === 'CHECK') {
-              await this.prisma.newslettersOnUsers.update({
-                where: {
-                  userId_newsletterId: {
-                    userId: user.id,
-                    newsletterId: newsletter.id,
+              await this.withTimeout(
+                this.prisma.newslettersOnUsers.update({
+                  where: {
+                    userId_newsletterId: {
+                      userId: user.id,
+                      newsletterId: newsletter.id,
+                    },
                   },
-                },
-                data: {
-                  status: 'CONFIRMED',
-                },
-              });
+                  data: {
+                    status: 'CONFIRMED',
+                  },
+                }),
+                this.DB_COMMAND_TIMEOUT_MS,
+                `[POP3] ${user.subscribeEmail} subscription confirm ${newsletter.id}`,
+              );
             }
             // 3. "구독 중지 중" 뉴스레터인 경우
             if (isSubscribed && isSubscribed.status === 'PAUSED') {
-              await this.prisma.article.update({
-                where: {
-                  id: article.id,
-                },
-                data: {
-                  isVisible: false,
-                },
-              });
+              await this.withTimeout(
+                this.prisma.article.update({
+                  where: {
+                    id: article.id,
+                  },
+                  data: {
+                    isVisible: false,
+                  },
+                }),
+                this.DB_COMMAND_TIMEOUT_MS,
+                `[POP3] ${user.subscribeEmail} article hide ${article.id}`,
+              );
             }
           }
         } catch (error) {
           console.error(
             `[POP3] 유저 ${user.subscribeEmail} 처리 중 에러:`,
-            error.message,
+            this.getErrorMessage(error),
           );
         } finally {
-          // eslint-disable-next-line @typescript-eslint/no-empty-function
-          await pop3.QUIT().catch(() => {});
+          try {
+            await this.withTimeout(
+              pop3.QUIT(),
+              this.POP3_QUIT_TIMEOUT_MS,
+              `[POP3] ${user.subscribeEmail} QUIT`,
+            );
+            console.log(`[POP3] 유저 ${user.subscribeEmail} 연결 종료 완료`);
+          } catch (error) {
+            console.error(
+              `[POP3] 유저 ${user.subscribeEmail} QUIT 중 에러:`,
+              this.getErrorMessage(error),
+            );
+          }
         }
       };
 
