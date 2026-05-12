@@ -19,12 +19,25 @@ model User {
   subscribePassword String               
   createdAt         DateTime             @default(now())
   deletedAt         DateTime?
+  mailboxPool       MailboxPool?         @relation(fields: [mailboxPoolId], references: [id])
+  mailboxPoolId     Int?                 @unique
   industry          Industry?            @relation(fields: [industryId], references: [id])
   industryId        Int?
   interests         InterestsOnUsers[]
   newsletters       NewslettersOnUsers[]
   articles          Article[]
   bookmarks         Bookmark[]
+}
+
+model MailboxPool {
+  id         Int      @id @default(autoincrement())
+  email      String   @unique
+  password   String
+  status     String   @default("AVAILABLE")
+  assignedAt DateTime?
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+  user       User?
 }
 
 model Newsletter {

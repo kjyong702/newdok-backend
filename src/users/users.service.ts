@@ -1,12 +1,30 @@
-import { Injectable, BadRequestException } from '@nestjs/common';
+import {
+  BadRequestException,
+  ConflictException,
+  Injectable,
+  ServiceUnavailableException,
+} from '@nestjs/common';
 import { NewslettersService } from '../newsletters/newsletters.service';
 import { PrismaService } from '../prisma.service';
 import { JwtService } from '@nestjs/jwt';
 import { CreateUserDto } from './dtos/create-user.dto';
+import { Prisma } from '@prisma/client';
 import * as bcrypt from 'bcrypt';
+import {
+  hasUniqueTarget,
+  isPrismaKnownRequestError,
+} from '../common/utils/prisma-error.util';
+
+class RetryableMailboxAllocationError extends Error {
+  constructor() {
+    super('MAILBOX_ALLOCATION_RETRY');
+  }
+}
 
 @Injectable()
 export class UsersService {
+  private readonly SIGNUP_CREATE_RETRY_LIMIT = 3;
+
   constructor(
     private newslettersService: NewslettersService,
     private prisma: PrismaService,
@@ -16,30 +34,113 @@ export class UsersService {
   async signup(createUserDto: CreateUserDto) {
     const { loginId, password, phoneNumber, nickname, birthYear, gender } =
       createUserDto;
-
-    const userList = await this.prisma.user.findMany();
-
-    const emailIndex = parseInt(userList[userList.length - 1].emailIndex) + 1;
-    const subscribeEmail = `newdok${emailIndex}@newdok.store`;
-    const subscribePassword = `!Kknewdok${emailIndex}`;
-    const hashedLoginPassword = await bcrypt.hash(password, 10);
-
-    const user = await this.prisma.user.create({
-      data: {
+    const existingUser = await this.prisma.user.findUnique({
+      where: {
         loginId,
-        password: hashedLoginPassword,
-        phoneNumber,
-        subscribeEmail,
-        subscribePassword,
-        nickname,
-        birthYear,
-        gender,
-        emailIndex: `${emailIndex}`,
       },
-      include: {
-        interests: true,
+      select: {
+        id: true,
       },
     });
+
+    if (existingUser) {
+      throw new BadRequestException('이미 사용 중인 아이디입니다.');
+    }
+
+    const hashedLoginPassword = await bcrypt.hash(password, 10);
+    let user: Awaited<ReturnType<typeof this.prisma.user.create>> | null = null;
+
+    for (
+      let attempt = 0;
+      attempt < this.SIGNUP_CREATE_RETRY_LIMIT && !user;
+      attempt++
+    ) {
+      try {
+        user = await this.prisma.$transaction(
+          async (tx) => {
+            const mailbox = await tx.mailboxPool.findFirst({
+              where: {
+                status: 'AVAILABLE',
+              },
+              orderBy: {
+                id: 'asc',
+              },
+            });
+
+            if (!mailbox) {
+              throw new ServiceUnavailableException(
+                '사용 가능한 구독 이메일이 없습니다. 관리자에게 문의해주세요.',
+              );
+            }
+
+            const reservedMailbox = await tx.mailboxPool.updateMany({
+              where: {
+                id: mailbox.id,
+                status: 'AVAILABLE',
+              },
+              data: {
+                status: 'ASSIGNED',
+                assignedAt: new Date(),
+              },
+            });
+
+            if (reservedMailbox.count === 0) {
+              throw new RetryableMailboxAllocationError();
+            }
+
+            return tx.user.create({
+              data: {
+                loginId,
+                password: hashedLoginPassword,
+                phoneNumber,
+                subscribeEmail: mailbox.email,
+                subscribePassword: mailbox.password,
+                nickname,
+                birthYear,
+                gender,
+                emailIndex: this.extractEmailIndex(mailbox.email),
+                mailboxPool: {
+                  connect: {
+                    id: mailbox.id,
+                  },
+                },
+              },
+              include: {
+                interests: true,
+              },
+            });
+          },
+          {
+            isolationLevel: Prisma.TransactionIsolationLevel.Serializable,
+          },
+        );
+      } catch (error) {
+        if (error instanceof RetryableMailboxAllocationError) {
+          continue;
+        }
+
+        if (!isPrismaKnownRequestError(error) || error.code !== 'P2002') {
+          throw error;
+        }
+
+        if (hasUniqueTarget(error, 'loginid')) {
+          throw new BadRequestException('이미 사용 중인 아이디입니다.');
+        }
+
+        if (hasUniqueTarget(error, 'subscribeemail', 'mailboxpoolid')) {
+          continue;
+        }
+
+        throw new ConflictException('중복된 회원 정보가 존재합니다.');
+      }
+    }
+
+    if (!user) {
+      throw new ServiceUnavailableException(
+        '회원가입용 구독 계정 생성이 지연되고 있습니다. 다시 시도해주세요.',
+      );
+    }
+
     const accessToken = await this.jwtService.signAsync({ id: user.id });
 
     return {
@@ -54,6 +155,18 @@ export class UsersService {
       },
       accessToken,
     };
+  }
+
+  private extractEmailIndex(email: string) {
+    const match = email.match(/^newdok(\d+)@/i);
+
+    if (!match) {
+      throw new ConflictException(
+        '구독 이메일 계정 정보가 올바르지 않습니다. 관리자에게 문의해주세요.',
+      );
+    }
+
+    return match[1];
   }
 
   async login(loginId: string, password: string) {
