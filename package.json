@@ -12,6 +12,7 @@
     "deploy:dev": "cross-env sudo NODE_ENV=development PORT=80 pm2 start dist/main.js",
     "deploy:prod": "cross-env sudo NODE_ENV=production PORT=80 node dist/main.js",
     "db-push:dev": "dotenv -e .development.env -- npx prisma db push",
+    "db-push:prod": "dotenv -e .production.env -- npx prisma db push",
     "db-pull:dev": "dotenv -e .devleopment.env -- npx prisma db pull",
     "db-pull:prod": "dotenv -e .production.env -- npx prisma db pull",
     "db-studio:dev": "dotenv -e .development.env -- npx prisma studio",
