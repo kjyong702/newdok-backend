@@ -10,6 +10,7 @@ import {
 } from '@nestjs/common';
 import { NewslettersService } from './newsletters.service';
 import { AuthGuard } from '../guards/auth.guard';
+import { SUBSCRIPTION_STATUS } from './constants/subscription-status';
 import {
   ApiTags,
   ApiOperation,
@@ -302,7 +303,7 @@ export class NewslettersController {
               name: '트렌드',
             },
           ],
-          isSubscribed: 'CONFIRMED',
+          isSubscribed: SUBSCRIPTION_STATUS.CONFIRMED,
           shortDescription: '세상 돌아가는 소식, 뉴닉으로!',
           subscriptionCount: 7,
         },
@@ -328,7 +329,7 @@ export class NewslettersController {
               name: '취미・자기계발',
             },
           ],
-          isSubscribed: 'INITIAL',
+          isSubscribed: SUBSCRIPTION_STATUS.INITIAL,
           shortDescription: '가장 쉽고 똑똑한 비즈니스 뉴스 읽기',
           subscriptionCount: 3,
         },
@@ -411,7 +412,7 @@ export class NewslettersController {
             date: '2023-11-09T05:27:41.000Z',
           },
         ],
-        isSubscribed: 'CONFIRMED',
+        isSubscribed: SUBSCRIPTION_STATUS.CONFIRMED,
         subscribeCheck: false,
       },
     },
@@ -444,7 +445,7 @@ export class NewslettersController {
       example: {
         userId: 91,
         newsletterId: 15,
-        status: 'PAUSED',
+        status: SUBSCRIPTION_STATUS.PAUSED,
       },
     },
   })
@@ -482,7 +483,7 @@ export class NewslettersController {
       example: {
         userId: 91,
         newsletterId: 15,
-        status: 'CONFIRMED',
+        status: SUBSCRIPTION_STATUS.CONFIRMED,
       },
     },
   })

@@ -1,5 +1,6 @@
 import { Injectable } from '@nestjs/common';
 import { PrismaService } from '../prisma.service';
+import { SUBSCRIPTION_STATUS } from '../newsletters/constants/subscription-status';
 
 @Injectable()
 export class OptionsService {
@@ -22,10 +23,10 @@ export class OptionsService {
     ]);
 
     const subscriptionStatuses = [
-      { status: 'INITIAL', description: '구독 전' },
-      { status: 'CHECK', description: '구독 확인 중' },
-      { status: 'CONFIRMED', description: '구독 완료' },
-      { status: 'PAUSED', description: '구독 중지' },
+      { status: SUBSCRIPTION_STATUS.INITIAL, description: '구독 전' },
+      { status: SUBSCRIPTION_STATUS.CHECK, description: '구독 확인 중' },
+      { status: SUBSCRIPTION_STATUS.CONFIRMED, description: '구독 완료' },
+      { status: SUBSCRIPTION_STATUS.PAUSED, description: '구독 중지' },
     ];
 
     return {

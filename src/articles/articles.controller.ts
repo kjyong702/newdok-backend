@@ -10,6 +10,7 @@ import {
 } from '@nestjs/common';
 import { ArticlesService } from './articles.service';
 import { AuthGuard } from '../guards/auth.guard';
+import { ARTICLE_STATUS } from './constants/article-status';
 import {
   ApiTags,
   ApiOperation,
@@ -98,7 +99,7 @@ export class ArticlesController {
             imageUrl: '',
             articleTitle: 'A-Z, 시민단체 보조금 논란',
             articleId: 1,
-            status: 'Unread',
+            status: ARTICLE_STATUS.UNREAD,
           },
         ],
       },
@@ -142,7 +143,7 @@ export class ArticlesController {
           id: 1,
           title: 'A-Z, 시민단체 보조금 논란',
           publishDate: 5,
-          status: 'Unread',
+          status: ARTICLE_STATUS.UNREAD,
           newsletter: {
             brandName: '머니레터',
             imageUrl: '',

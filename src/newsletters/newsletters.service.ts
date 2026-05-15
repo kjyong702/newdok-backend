@@ -1,5 +1,6 @@
 import { Injectable, BadRequestException } from '@nestjs/common';
 import { PrismaService } from '../prisma.service';
+import { SUBSCRIPTION_STATUS } from './constants/subscription-status';
 
 @Injectable()
 export class NewslettersService {
@@ -395,7 +396,9 @@ export class NewslettersService {
       subscribeUrl: newsletter.subscribeUrl,
       imageUrl: newsletter.imageUrl,
       brandArticleList: newsletter.articles,
-      isSubscribed: !isSubscribed ? 'INITIAL' : isSubscribed.status,
+      isSubscribed: !isSubscribed
+        ? SUBSCRIPTION_STATUS.INITIAL
+        : isSubscribed.status,
       subscribeCheck: newsletter.doubleCheck,
     };
 
@@ -569,7 +572,7 @@ export class NewslettersService {
           brandName: newsletter.brandName,
           imageUrl: newsletter.imageUrl,
           interests: newsletter.interests,
-          isSubscribed: 'INITIAL',
+          isSubscribed: SUBSCRIPTION_STATUS.INITIAL,
           shortDescription: newsletter.secondDescription,
           subscriptionCount: newsletter.users.length,
         });
@@ -673,7 +676,7 @@ export class NewslettersService {
           brandName: newsletter.brandName,
           imageUrl: newsletter.imageUrl,
           interests: newsletter.interests,
-          isSubscribed: 'INITIAL',
+          isSubscribed: SUBSCRIPTION_STATUS.INITIAL,
           shortDescription: newsletter.secondDescription,
           createdAt: newsletter.createdAt,
         });
@@ -824,7 +827,9 @@ export class NewslettersService {
     const activeSubscribedNewsletters = await this.prisma.newsletter.findMany({
       where: {
         users: {
-          some: { AND: [{ userId }, { status: 'CONFIRMED' }] },
+          some: {
+            AND: [{ userId }, { status: SUBSCRIPTION_STATUS.CONFIRMED }],
+          },
         },
       },
       select: {
@@ -844,7 +849,7 @@ export class NewslettersService {
       where: {
         users: {
           some: {
-            AND: [{ userId }, { status: 'PAUSED' }],
+            AND: [{ userId }, { status: SUBSCRIPTION_STATUS.PAUSED }],
           },
         },
       },
@@ -869,7 +874,10 @@ export class NewslettersService {
         },
       },
     });
-    if (!isSubscribed || isSubscribed.status !== 'CONFIRMED') {
+    if (
+      !isSubscribed ||
+      isSubscribed.status !== SUBSCRIPTION_STATUS.CONFIRMED
+    ) {
       throw new BadRequestException('구독 중인 뉴스레터가 아닙니다');
     }
 
@@ -881,7 +889,7 @@ export class NewslettersService {
         },
       },
       data: {
-        status: 'PAUSED',
+        status: SUBSCRIPTION_STATUS.PAUSED,
       },
     });
 
@@ -902,7 +910,7 @@ export class NewslettersService {
         },
       },
     });
-    if (!isSubscribed || isSubscribed.status !== 'PAUSED') {
+    if (!isSubscribed || isSubscribed.status !== SUBSCRIPTION_STATUS.PAUSED) {
       throw new BadRequestException('구독 중지 중인 뉴스레터가 아닙니다');
     }
 
@@ -914,7 +922,7 @@ export class NewslettersService {
         },
       },
       data: {
-        status: 'CONFIRMED',
+        status: SUBSCRIPTION_STATUS.CONFIRMED,
       },
     });
 
@@ -929,7 +937,7 @@ export class NewslettersService {
     const count = await this.prisma.newslettersOnUsers.count({
       where: {
         userId,
-        status: 'CONFIRMED',
+        status: SUBSCRIPTION_STATUS.CONFIRMED,
       },
     });
 

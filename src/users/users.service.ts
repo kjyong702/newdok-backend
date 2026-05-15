@@ -14,6 +14,7 @@ import {
   hasUniqueTarget,
   isPrismaKnownRequestError,
 } from '../common/utils/prisma-error.util';
+import { MAILBOX_POOL_STATUS } from './constants/mailbox-pool-status';
 
 class RetryableMailboxAllocationError extends Error {
   constructor() {
@@ -60,7 +61,7 @@ export class UsersService {
           async (tx) => {
             const mailbox = await tx.mailboxPool.findFirst({
               where: {
-                status: 'AVAILABLE',
+                status: MAILBOX_POOL_STATUS.AVAILABLE,
               },
               orderBy: {
                 id: 'asc',
@@ -76,10 +77,10 @@ export class UsersService {
             const reservedMailbox = await tx.mailboxPool.updateMany({
               where: {
                 id: mailbox.id,
-                status: 'AVAILABLE',
+                status: MAILBOX_POOL_STATUS.AVAILABLE,
               },
               data: {
-                status: 'ASSIGNED',
+                status: MAILBOX_POOL_STATUS.ASSIGNED,
                 assignedAt: new Date(),
               },
             });

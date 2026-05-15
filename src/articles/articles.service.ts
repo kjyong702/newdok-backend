@@ -3,6 +3,8 @@ import { PrismaService } from '../prisma.service';
 import { simpleParser } from 'mailparser';
 import Pop3Command from 'node-pop3';
 import { parse } from 'node-html-parser';
+import { SUBSCRIPTION_STATUS } from '../newsletters/constants/subscription-status';
+import { ARTICLE_STATUS } from './constants/article-status';
 
 @Injectable()
 export class ArticlesService {
@@ -224,7 +226,9 @@ export class ArticlesService {
                     userId: user.id,
                     newsletterId: newsletter.id,
                     status:
-                      newsletter.doubleCheck === true ? 'CHECK' : 'CONFIRMED',
+                      newsletter.doubleCheck === true
+                        ? SUBSCRIPTION_STATUS.CHECK
+                        : SUBSCRIPTION_STATUS.CONFIRMED,
                   },
                 }),
                 this.DB_COMMAND_TIMEOUT_MS,
@@ -232,7 +236,10 @@ export class ArticlesService {
               );
             }
             // 2. "구독 확인 중" 뉴스레터인 경우
-            if (isSubscribed && isSubscribed.status === 'CHECK') {
+            if (
+              isSubscribed &&
+              isSubscribed.status === SUBSCRIPTION_STATUS.CHECK
+            ) {
               await this.withTimeout(
                 this.prisma.newslettersOnUsers.update({
                   where: {
@@ -242,7 +249,7 @@ export class ArticlesService {
                     },
                   },
                   data: {
-                    status: 'CONFIRMED',
+                    status: SUBSCRIPTION_STATUS.CONFIRMED,
                   },
                 }),
                 this.DB_COMMAND_TIMEOUT_MS,
@@ -250,7 +257,10 @@ export class ArticlesService {
               );
             }
             // 3. "구독 중지 중" 뉴스레터인 경우
-            if (isSubscribed && isSubscribed.status === 'PAUSED') {
+            if (
+              isSubscribed &&
+              isSubscribed.status === SUBSCRIPTION_STATUS.PAUSED
+            ) {
               await this.withTimeout(
                 this.prisma.article.update({
                   where: {
@@ -336,7 +346,7 @@ export class ArticlesService {
 
       resultByDate[idx].hasArticles = true;
       resultByDate[idx].totalCount++;
-      if (article.status === 'Unread') {
+      if (article.status === ARTICLE_STATUS.UNREAD) {
         resultByDate[idx].unreadCount++;
       }
     });
@@ -423,7 +433,7 @@ export class ArticlesService {
         id: parseInt(articleId),
       },
       data: {
-        status: 'Read',
+        status: ARTICLE_STATUS.READ,
       },
       include: { newsletter: true },
     });
