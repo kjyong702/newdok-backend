@@ -14,6 +14,28 @@ import {
   isPrismaKnownRequestError,
 } from '../utils/prisma-error.util';
 
+const SENSITIVE_FILE_SCAN_PATTERNS = [
+  /\/\.env(?:\.|$)/i,
+  /\/config\.env$/i,
+  /\/\.pypirc$/i,
+  /\/\.ssh(?:\/|$)/i,
+  /\/\.git(?:\/|$)/i,
+  /\/id_(?:rsa|ed25519)$/i,
+];
+
+const SUSPICIOUS_SCAN_METHODS = new Set([
+  'PROPFIND',
+  'PROPPATCH',
+  'MKCOL',
+  'COPY',
+  'MOVE',
+  'LOCK',
+  'UNLOCK',
+  'SEARCH',
+  'TRACE',
+  'CONNECT',
+]);
+
 @Catch()
 export class GlobalExceptionFilter implements ExceptionFilter {
   private readonly logger = new Logger(GlobalExceptionFilter.name);
@@ -25,10 +47,7 @@ export class GlobalExceptionFilter implements ExceptionFilter {
 
     const { statusCode, message, error } = this.mapException(exception);
 
-    this.logger.error(
-      `[${request.method}] ${request.url} -> ${statusCode} ${message}`,
-      exception instanceof Error ? exception.stack : String(exception),
-    );
+    this.logException(request, exception, statusCode, message);
 
     response.status(statusCode).json({
       statusCode,
@@ -37,6 +56,54 @@ export class GlobalExceptionFilter implements ExceptionFilter {
       path: request.url,
       timestamp: new Date().toISOString(),
     });
+  }
+
+  private logException(
+    request: Request,
+    exception: unknown,
+    statusCode: number,
+    message: string,
+  ) {
+    const clientIp =
+      request.ip || request.headers['x-forwarded-for'] || 'unknown';
+    const logMessage = `[${request.method}] ${request.url} -> ${statusCode} ${message} (${clientIp})`;
+
+    if (statusCode >= HttpStatus.INTERNAL_SERVER_ERROR) {
+      this.logger.error(
+        logMessage,
+        exception instanceof Error ? exception.stack : String(exception),
+      );
+      return;
+    }
+
+    if (statusCode === HttpStatus.NOT_FOUND) {
+      if (this.isScanLikeRequest(request)) {
+        this.logger.log(`[SCAN] ${logMessage}`);
+        return;
+      }
+
+      this.logger.warn(logMessage);
+      return;
+    }
+
+    if (statusCode >= HttpStatus.BAD_REQUEST) {
+      this.logger.warn(logMessage);
+    }
+  }
+
+  private isSensitiveFileScan(url: string) {
+    return SENSITIVE_FILE_SCAN_PATTERNS.some((pattern) => pattern.test(url));
+  }
+
+  private isSuspiciousScanMethod(method: string) {
+    return SUSPICIOUS_SCAN_METHODS.has(method.toUpperCase());
+  }
+
+  private isScanLikeRequest(request: Request) {
+    return (
+      this.isSensitiveFileScan(request.url) ||
+      this.isSuspiciousScanMethod(request.method)
+    );
   }
 
   private mapException(exception: unknown) {
