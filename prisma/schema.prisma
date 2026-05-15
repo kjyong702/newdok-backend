@@ -36,7 +36,7 @@ model MailboxPool {
   status     String   @default("AVAILABLE")
   assignedAt DateTime?
   createdAt  DateTime @default(now())
-  updatedAt  DateTime @updatedAt
+  updatedAt  DateTime @default(now()) @updatedAt
   user       User?
 }
 
@@ -56,7 +56,7 @@ model Newsletter {
   doubleCheck       Boolean              @default(false)
   temporaryMiss     Boolean              @default(false)
   createdAt         DateTime             @default(now())
-  updatedAt         DateTime             @updatedAt
+  updatedAt         DateTime             @default(now()) @updatedAt
   users             NewslettersOnUsers[]
   articles          Article[]
   industries        Industry[]
@@ -111,7 +111,7 @@ model NewslettersOnUsers {
   newsletterId Int
   status       String
   createdAt    DateTime   @default(now())
-  updatedAt    DateTime?  @updatedAt    
+  updatedAt    DateTime?  @default(now()) @updatedAt
 
   @@id([userId, newsletterId])
 }
