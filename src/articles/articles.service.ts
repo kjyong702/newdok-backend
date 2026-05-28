@@ -58,6 +58,9 @@ export class ArticlesService {
     this.isPop3Running = true;
     try {
       const allUser = await this.prisma.user.findMany({
+        where: {
+          deletedAt: null,
+        },
         include: {
           _count: {
             select: { articles: true },
