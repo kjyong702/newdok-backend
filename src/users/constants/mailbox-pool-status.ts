@@ -1,6 +1,7 @@
 export const MAILBOX_POOL_STATUS = {
   AVAILABLE: 'AVAILABLE',
   ASSIGNED: 'ASSIGNED',
+  RETIRED: 'RETIRED',
 } as const;
 
 export type MailboxPoolStatus =
