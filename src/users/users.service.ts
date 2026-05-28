@@ -185,6 +185,11 @@ export class UsersService {
         '등록되지 않은 계정이거나, 아이디를 다시 확인해주세요',
       );
     }
+    if (!user.password) {
+      throw new BadRequestException(
+        '비밀번호 로그인 계정이 아닙니다. 소셜 로그인을 이용해주세요.',
+      );
+    }
     const passwordMatch = await bcrypt.compare(password, user.password);
     if (!passwordMatch) {
       throw new BadRequestException('비밀번호가 일치하지 않습니다');
@@ -412,6 +417,11 @@ export class UsersService {
       if (!user) {
         throw new BadRequestException('가입되지 않은 아이디입니다');
       }
+      if (!user.password) {
+        throw new BadRequestException(
+          '비밀번호 로그인 계정이 아닙니다. 소셜 로그인을 이용해주세요.',
+        );
+      }
       const isValid = await bcrypt.compare(prevPassword, user.password);
       if (!isValid) {
         throw new BadRequestException('현재 비밀번호가 일치하지 않습니다');
@@ -468,15 +478,63 @@ export class UsersService {
       throw new BadRequestException('이미 탈퇴한 유저입니다');
     }
 
-    // Soft Delete: deletedAt 필드에 현재 시간 설정
     const deletedAt = new Date();
-    await this.prisma.user.update({
-      where: {
-        id: userId,
-      },
-      data: {
-        deletedAt,
-      },
+    await this.prisma.$transaction(async (tx) => {
+      await tx.bookmark.deleteMany({
+        where: {
+          userId,
+        },
+      });
+
+      await tx.newslettersOnUsers.deleteMany({
+        where: {
+          userId,
+        },
+      });
+
+      await tx.interestsOnUsers.deleteMany({
+        where: {
+          userId,
+        },
+      });
+
+      await tx.article.deleteMany({
+        where: {
+          userId,
+        },
+      });
+
+      await tx.authAccount.deleteMany({
+        where: {
+          userId,
+        },
+      });
+
+      await tx.userConsent.deleteMany({
+        where: {
+          userId,
+        },
+      });
+
+      if (user.mailboxPoolId) {
+        await tx.mailboxPool.update({
+          where: {
+            id: user.mailboxPoolId,
+          },
+          data: {
+            status: MAILBOX_POOL_STATUS.RETIRED,
+          },
+        });
+      }
+
+      await tx.user.update({
+        where: {
+          id: userId,
+        },
+        data: {
+          deletedAt,
+        },
+      });
     });
 
     return {
