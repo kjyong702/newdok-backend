@@ -16,7 +16,9 @@
     "db-pull:dev": "dotenv -e .devleopment.env -- npx prisma db pull",
     "db-pull:prod": "dotenv -e .production.env -- npx prisma db pull",
     "db-studio:dev": "dotenv -e .development.env -- npx prisma studio",
-    "db-studio:prod": "dotenv -e .production.env -- npx prisma studio"
+    "db-studio:prod": "dotenv -e .production.env -- npx prisma studio",
+    "import:newsletters:dev": "dotenv -e .development.env -- ts-node scripts/import-newsletters-from-csv.ts",
+    "import:newsletters:prod": "dotenv -e .production.env -- ts-node scripts/import-newsletters-from-csv.ts"
   },
   "dependencies": {
     "@nestjs/common": "^9.0.0",

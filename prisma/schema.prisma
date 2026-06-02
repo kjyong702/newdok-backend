@@ -51,7 +51,7 @@ model UserConsent {
   isRequired     Boolean
   isAccepted     Boolean
   consentVersion String
-  acceptedAt     DateTime @default(now())
+  acceptedAt     DateTime?
   createdAt      DateTime @default(now())
   updatedAt      DateTime @default(now()) @updatedAt
   user           User     @relation(fields: [userId], references: [id])
