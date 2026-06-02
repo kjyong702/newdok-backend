@@ -12,6 +12,7 @@ import { JwtService } from '@nestjs/jwt';
 import { Prisma } from '@prisma/client';
 import { MAILBOX_POOL_STATUS } from '../users/constants/mailbox-pool-status';
 import { AUTH_PROVIDER } from './constants/auth-provider';
+import { USER_CONSENT_POLICY } from './constants/user-consent-policy';
 import { KakaoAuthDto } from './dtos/kakao-auth.dto';
 import { KakaoSignupDto } from './dtos/kakao-signup.dto';
 
@@ -148,9 +149,28 @@ export class AuthService {
 
   async completeKakaoSignup(body: KakaoSignupDto) {
     const signupTokenPayload = await this.verifySignupToken(body.signupToken);
+    const agreements = new Map(
+      body.agreements.map((agreement) => [agreement.type, agreement.agreed]),
+    );
 
-    const requiredConsentRejected = body.consents.some(
-      (consent) => consent.isRequired && !consent.isAccepted,
+    if (agreements.size !== body.agreements.length) {
+      throw new BadRequestException('중복된 약관 동의 항목이 있습니다.');
+    }
+
+    const consentEntries = Object.entries(USER_CONSENT_POLICY);
+    const hasUnknownConsentType = [...agreements.keys()].some(
+      (type) => !(type in USER_CONSENT_POLICY),
+    );
+    const hasMissingConsentType = consentEntries.some(
+      ([type]) => !agreements.has(type),
+    );
+
+    if (hasUnknownConsentType || hasMissingConsentType) {
+      throw new BadRequestException('약관 동의 항목이 올바르지 않습니다.');
+    }
+
+    const requiredConsentRejected = consentEntries.some(
+      ([type, policy]) => policy.isRequired && !agreements.get(type),
     );
 
     if (requiredConsentRejected) {
@@ -255,13 +275,13 @@ export class AuthService {
             });
 
             await tx.userConsent.createMany({
-              data: body.consents.map((consent) => ({
+              data: consentEntries.map(([consentType, policy]) => ({
                 userId: createdUser.id,
-                consentType: consent.consentType,
-                isRequired: consent.isRequired,
-                isAccepted: consent.isAccepted,
-                consentVersion: consent.consentVersion,
-                acceptedAt: new Date(),
+                consentType,
+                isRequired: policy.isRequired,
+                isAccepted: agreements.get(consentType),
+                consentVersion: policy.version,
+                acceptedAt: agreements.get(consentType) ? new Date() : null,
               })),
             });
 
