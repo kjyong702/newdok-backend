@@ -476,18 +476,27 @@ export class NewslettersService {
               .map((industryId) => parseInt(industryId))
               .filter((id) => !isNaN(id) && id !== 0);
     }
-    // days가 없거나 빈 배열인 경우 모든 Day ID 조회
-    if (!days || (Array.isArray(days) && days.length === 0)) {
-      const allDays = await this.prisma.day.findMany({
-        select: { id: true },
-      });
-      dayIds = allDays.map((day) => day.id);
-    } else {
+    const isAllDays =
+      !days ||
+      (Array.isArray(days) && days.length === 0) ||
+      (typeof days === 'string' && days === '0') ||
+      (Array.isArray(days) && days.length === 1 && days[0] === '0');
+
+    if (!isAllDays) {
       dayIds =
         typeof days === 'string'
           ? [parseInt(days)]
           : days.map((dayId) => parseInt(dayId)).filter((id) => !isNaN(id));
     }
+    const dayFilter = isAllDays
+      ? []
+      : [
+          {
+            days: {
+              some: { id: { in: dayIds } },
+            },
+          },
+        ];
 
     // 1. 인기순 정렬 + 구독 중인 뉴스레터
     if (orderOpt === '인기순') {
@@ -499,11 +508,7 @@ export class NewslettersService {
                 some: { id: { in: industryIds } },
               },
             },
-            {
-              days: {
-                some: { id: { in: dayIds } },
-              },
-            },
+            ...dayFilter,
             {
               users: {
                 some: { userId },
@@ -545,11 +550,7 @@ export class NewslettersService {
                 some: { id: { in: industryIds } },
               },
             },
-            {
-              days: {
-                some: { id: { in: dayIds } },
-              },
-            },
+            ...dayFilter,
             {
               temporaryMiss: false,
             },
@@ -596,13 +597,7 @@ export class NewslettersService {
                 },
               },
             },
-            {
-              days: {
-                some: {
-                  id: { in: dayIds },
-                },
-              },
-            },
+            ...dayFilter,
             {
               users: {
                 some: { userId },
@@ -647,13 +642,7 @@ export class NewslettersService {
                 },
               },
             },
-            {
-              days: {
-                some: {
-                  id: { in: dayIds },
-                },
-              },
-            },
+            ...dayFilter,
             {
               temporaryMiss: false,
             },
@@ -721,18 +710,27 @@ export class NewslettersService {
               .map((industryId) => parseInt(industryId))
               .filter((id) => !isNaN(id) && id !== 0);
     }
-    // days가 없거나 빈 배열인 경우 모든 Day ID 조회
-    if (!days || (Array.isArray(days) && days.length === 0)) {
-      const allDays = await this.prisma.day.findMany({
-        select: { id: true },
-      });
-      dayIds = allDays.map((day) => day.id);
-    } else {
+    const isAllDays =
+      !days ||
+      (Array.isArray(days) && days.length === 0) ||
+      (typeof days === 'string' && days === '0') ||
+      (Array.isArray(days) && days.length === 1 && days[0] === '0');
+
+    if (!isAllDays) {
       dayIds =
         typeof days === 'string'
           ? [parseInt(days)]
           : days.map((dayId) => parseInt(dayId)).filter((id) => !isNaN(id));
     }
+    const dayFilter = isAllDays
+      ? []
+      : [
+          {
+            days: {
+              some: { id: { in: dayIds } },
+            },
+          },
+        ];
 
     // 1. 인기순 정렬
     if (orderOpt === '인기순') {
@@ -744,11 +742,7 @@ export class NewslettersService {
                 some: { id: { in: industryIds } },
               },
             },
-            {
-              days: {
-                some: { id: { in: dayIds } },
-              },
-            },
+            ...dayFilter,
             {
               temporaryMiss: false,
             },
@@ -788,13 +782,7 @@ export class NewslettersService {
                 },
               },
             },
-            {
-              days: {
-                some: {
-                  id: { in: dayIds },
-                },
-              },
-            },
+            ...dayFilter,
             {
               temporaryMiss: false,
             },
