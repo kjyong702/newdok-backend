@@ -36,6 +36,7 @@
     "cross-env": "^7.0.3",
     "dotenv": "^16.4.5",
     "dotenv-cli": "^7.3.0",
+    "jose": "^4.15.9",
     "mailparser": "^3.6.4",
     "mariadb": "3.4.5",
     "node-html-parser": "^6.1.13",

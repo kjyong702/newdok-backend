@@ -4,6 +4,7 @@ import { ConfigService } from '@nestjs/config';
 import { AuthService } from './auth.service';
 import { AuthController } from './auth.controller';
 import { PrismaService } from '../prisma.service';
+import { AppleAuthService } from './apple-auth.service';
 
 @Module({
   imports: [
@@ -16,6 +17,7 @@ import { PrismaService } from '../prisma.service';
     }),
   ],
   controllers: [AuthController],
-  providers: [AuthService, PrismaService],
+  providers: [AuthService, AppleAuthService, PrismaService],
+  exports: [AppleAuthService],
 })
 export class AuthModule {}

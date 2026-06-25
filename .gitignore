@@ -3,6 +3,7 @@
 /node_modules
 .production.env
 .development.env
+*.p8
 /pscale_dump_newdok_main
 
 # Logs

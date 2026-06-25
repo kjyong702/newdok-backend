@@ -15,6 +15,8 @@ import {
   isPrismaKnownRequestError,
 } from '../common/utils/prisma-error.util';
 import { MAILBOX_POOL_STATUS } from './constants/mailbox-pool-status';
+import { AppleAuthService } from '../auth/apple-auth.service';
+import { AUTH_PROVIDER } from '../auth/constants/auth-provider';
 
 class RetryableMailboxAllocationError extends Error {
   constructor() {
@@ -30,6 +32,7 @@ export class UsersService {
     private newslettersService: NewslettersService,
     private prisma: PrismaService,
     private jwtService: JwtService,
+    private appleAuthService: AppleAuthService,
   ) {}
 
   async signup(createUserDto: CreateUserDto) {
@@ -468,6 +471,9 @@ export class UsersService {
       where: {
         id: userId,
       },
+      include: {
+        authAccounts: true,
+      },
     });
 
     if (!user) {
@@ -476,6 +482,20 @@ export class UsersService {
 
     if (user.deletedAt) {
       throw new BadRequestException('이미 탈퇴한 유저입니다');
+    }
+
+    const appleAuthAccount = user.authAccounts.find(
+      (authAccount) => authAccount.provider === AUTH_PROVIDER.APPLE,
+    );
+
+    if (
+      appleAuthAccount?.providerRefreshTokenEncrypted &&
+      appleAuthAccount.providerClientId
+    ) {
+      await this.appleAuthService.revokeRefreshToken(
+        appleAuthAccount.providerRefreshTokenEncrypted,
+        appleAuthAccount.providerClientId,
+      );
     }
 
     const deletedAt = new Date();

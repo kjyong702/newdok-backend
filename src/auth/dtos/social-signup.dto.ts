@@ -12,7 +12,7 @@ import {
 import { Type } from 'class-transformer';
 import { USER_CONSENT_TYPE } from '../constants/user-consent-type';
 
-class KakaoSignupAgreementDto {
+class SocialSignupAgreementDto {
   @ApiProperty({
     example: USER_CONSENT_TYPE.TERMS_OF_SERVICE,
     description: '약관 항목 타입',
@@ -30,10 +30,10 @@ class KakaoSignupAgreementDto {
   agreed: boolean;
 }
 
-export class KakaoSignupDto {
+export class SocialSignupDto {
   @ApiProperty({
     example: 'signup-jwt-token',
-    description: '카카오 인증 후 발급된 임시 회원가입 토큰',
+    description: '소셜 로그인 인증 후 발급된 임시 회원가입 토큰',
   })
   @IsString()
   @IsNotEmpty()
@@ -65,12 +65,12 @@ export class KakaoSignupDto {
   gender: string;
 
   @ApiProperty({
-    type: [KakaoSignupAgreementDto],
+    type: [SocialSignupAgreementDto],
     description: '회원가입 시 동의한 약관 항목 리스트',
   })
   @IsArray()
   @ArrayMinSize(1)
   @ValidateNested({ each: true })
-  @Type(() => KakaoSignupAgreementDto)
-  agreements: KakaoSignupAgreementDto[];
+  @Type(() => SocialSignupAgreementDto)
+  agreements: SocialSignupAgreementDto[];
 }

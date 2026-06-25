@@ -13,8 +13,10 @@ import { Prisma } from '@prisma/client';
 import { MAILBOX_POOL_STATUS } from '../users/constants/mailbox-pool-status';
 import { AUTH_PROVIDER } from './constants/auth-provider';
 import { USER_CONSENT_POLICY } from './constants/user-consent-policy';
-import { KakaoAuthDto } from './dtos/kakao-auth.dto';
-import { KakaoSignupDto } from './dtos/kakao-signup.dto';
+import { AppleAuthService } from './apple-auth.service';
+import { SocialSignupDto } from './dtos/social-signup.dto';
+import { SocialAuthDto } from './dtos/social-auth.dto';
+import { AUTH_PLATFORM } from './constants/auth-platform';
 
 type KakaoTokenResponse = {
   access_token: string;
@@ -29,11 +31,18 @@ type KakaoUserProfile = {
   nickname: string | null;
 };
 
-type SignupTokenPayload = {
-  type: 'kakao-signup';
+type SocialAuthProfile = {
   provider: string;
   providerUserId: string;
   email: string | null;
+  nickname: string | null;
+  providerClientId?: string;
+  providerRefreshTokenEncrypted?: string;
+};
+
+type SignupTokenPayload = Omit<SocialAuthProfile, 'nickname'> & {
+  type: 'social-signup';
+  platform: string;
 };
 
 @Injectable()
@@ -52,6 +61,7 @@ export class AuthService {
     private prisma: PrismaService,
     private jwtService: JwtService,
     private configService: ConfigService,
+    private appleAuthService: AppleAuthService,
   ) {}
 
   async sendTwilioSMS(phoneNumber: string) {
@@ -86,18 +96,14 @@ export class AuthService {
     }
   }
 
-  async kakaoAuth(body: KakaoAuthDto) {
-    const kakaoToken = await this.requestKakaoToken(
-      body.code,
-      body.redirectUri,
-    );
-    const kakaoUser = await this.retrieveKakaoUser(kakaoToken.access_token);
+  async socialAuth(body: SocialAuthDto) {
+    const profile = await this.authenticateSocialProvider(body);
 
     const authAccount = await this.prisma.authAccount.findUnique({
       where: {
         provider_providerUserId: {
-          provider: AUTH_PROVIDER.KAKAO,
-          providerUserId: kakaoUser.providerUserId,
+          provider: profile.provider,
+          providerUserId: profile.providerUserId,
         },
       },
       include: {
@@ -114,6 +120,8 @@ export class AuthService {
         throw new UnauthorizedException('탈퇴한 계정입니다.');
       }
 
+      await this.updateProviderCredential(authAccount.id, profile);
+
       const accessToken = await this.issueAccessToken(authAccount.user.id);
 
       return {
@@ -125,10 +133,13 @@ export class AuthService {
 
     const signupToken = await this.jwtService.signAsync(
       {
-        type: 'kakao-signup',
-        provider: AUTH_PROVIDER.KAKAO,
-        providerUserId: kakaoUser.providerUserId,
-        email: kakaoUser.email,
+        type: 'social-signup',
+        platform: body.platform,
+        provider: profile.provider,
+        providerUserId: profile.providerUserId,
+        email: profile.email,
+        providerClientId: profile.providerClientId,
+        providerRefreshTokenEncrypted: profile.providerRefreshTokenEncrypted,
       } satisfies SignupTokenPayload,
       {
         expiresIn: this.SIGNUP_TOKEN_EXPIRES_IN,
@@ -139,15 +150,15 @@ export class AuthService {
       isRegistered: false,
       signupToken,
       profile: {
-        provider: AUTH_PROVIDER.KAKAO,
-        providerUserId: kakaoUser.providerUserId,
-        email: kakaoUser.email,
-        nickname: kakaoUser.nickname,
+        provider: profile.provider,
+        providerUserId: profile.providerUserId,
+        email: profile.email,
+        nickname: profile.nickname,
       },
     };
   }
 
-  async completeKakaoSignup(body: KakaoSignupDto) {
+  async completeSocialSignup(body: SocialSignupDto) {
     const signupTokenPayload = await this.verifySignupToken(body.signupToken);
     const agreements = new Map(
       body.agreements.map((agreement) => [agreement.type, agreement.agreed]),
@@ -197,6 +208,16 @@ export class AuthService {
       if (existingAuthAccount.user.deletedAt) {
         throw new UnauthorizedException('탈퇴한 계정입니다.');
       }
+
+      await this.updateProviderCredential(existingAuthAccount.id, {
+        provider: signupTokenPayload.provider,
+        providerUserId: signupTokenPayload.providerUserId,
+        email: signupTokenPayload.email,
+        nickname: null,
+        providerClientId: signupTokenPayload.providerClientId,
+        providerRefreshTokenEncrypted:
+          signupTokenPayload.providerRefreshTokenEncrypted,
+      });
 
       const accessToken = await this.issueAccessToken(
         existingAuthAccount.user.id,
@@ -270,6 +291,9 @@ export class AuthService {
                 provider: signupTokenPayload.provider,
                 providerUserId: signupTokenPayload.providerUserId,
                 email: signupTokenPayload.email,
+                providerClientId: signupTokenPayload.providerClientId,
+                providerRefreshTokenEncrypted:
+                  signupTokenPayload.providerRefreshTokenEncrypted,
                 userId: createdUser.id,
               },
             });
@@ -322,6 +346,104 @@ export class AuthService {
     };
   }
 
+  private async authenticateSocialProvider(
+    body: SocialAuthDto,
+  ): Promise<SocialAuthProfile> {
+    if (body.provider === AUTH_PROVIDER.KAKAO) {
+      return this.authenticateKakao(body);
+    }
+
+    if (body.provider === AUTH_PROVIDER.APPLE) {
+      return this.authenticateApple(body);
+    }
+
+    throw new BadRequestException('지원하지 않는 소셜 로그인 provider입니다.');
+  }
+
+  private async authenticateKakao(body: SocialAuthDto) {
+    const { credential } = body;
+    let kakaoAccessToken = credential.accessToken;
+
+    if (!kakaoAccessToken) {
+      if (!credential.authorizationCode || !credential.redirectUri) {
+        throw new BadRequestException(
+          '카카오 code 플로우는 authorizationCode와 redirectUri가 필요합니다.',
+        );
+      }
+
+      const kakaoToken = await this.requestKakaoToken(
+        credential.authorizationCode,
+        credential.redirectUri,
+      );
+      kakaoAccessToken = kakaoToken.access_token;
+    }
+
+    const kakaoUser = await this.retrieveKakaoUser(kakaoAccessToken);
+
+    return {
+      provider: AUTH_PROVIDER.KAKAO,
+      providerUserId: kakaoUser.providerUserId,
+      email: kakaoUser.email,
+      nickname: kakaoUser.nickname,
+    };
+  }
+
+  private async authenticateApple(body: SocialAuthDto) {
+    const { credential } = body;
+
+    if (body.platform === AUTH_PLATFORM.ANDROID) {
+      throw new BadRequestException(
+        'Apple 로그인은 현재 iOS 또는 Web 플랫폼만 지원합니다.',
+      );
+    }
+
+    if (!credential.authorizationCode || !credential.idToken) {
+      throw new BadRequestException(
+        'Apple 로그인은 authorizationCode와 idToken이 필요합니다.',
+      );
+    }
+
+    if (body.platform === AUTH_PLATFORM.WEB && !credential.redirectUri) {
+      throw new BadRequestException(
+        'Apple Web 로그인은 redirectUri가 필요합니다.',
+      );
+    }
+
+    const appleUser = await this.appleAuthService.authenticate(
+      credential.authorizationCode,
+      credential.idToken,
+      body.platform,
+      credential.redirectUri,
+    );
+
+    return {
+      provider: AUTH_PROVIDER.APPLE,
+      providerUserId: appleUser.providerUserId,
+      email: appleUser.email,
+      nickname: null,
+      providerClientId: appleUser.clientId,
+      providerRefreshTokenEncrypted: appleUser.refreshTokenEncrypted,
+    };
+  }
+
+  private async updateProviderCredential(
+    authAccountId: number,
+    profile: SocialAuthProfile,
+  ) {
+    if (!profile.email && !profile.providerClientId) {
+      return;
+    }
+
+    await this.prisma.authAccount.update({
+      where: { id: authAccountId },
+      data: {
+        email: profile.email ?? undefined,
+        providerClientId: profile.providerClientId,
+        providerRefreshTokenEncrypted: profile.providerRefreshTokenEncrypted,
+      },
+    });
+  }
+
   private async issueAccessToken(userId: number) {
     return this.jwtService.signAsync({ id: userId });
   }
@@ -331,9 +453,7 @@ export class AuthService {
       'KAKAO_REST_API_KEY',
       '카카오 로그인 REST API 키 설정이 완료되지 않았습니다.',
     );
-    const clientSecret = this.configService.get<string>(
-      'KAKAO_CLIENT_SECRET',
-    );
+    const clientSecret = this.configService.get<string>('KAKAO_CLIENT_SECRET');
     const body = new URLSearchParams({
       grant_type: 'authorization_code',
       client_id: clientId,
@@ -410,7 +530,7 @@ export class AuthService {
         token,
       );
 
-      if (payload.type !== 'kakao-signup') {
+      if (payload.type !== 'social-signup') {
         throw new UnauthorizedException(
           '회원가입 토큰 유형이 올바르지 않습니다.',
         );

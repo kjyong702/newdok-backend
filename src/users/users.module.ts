@@ -7,11 +7,13 @@ import { ConfigService } from '@nestjs/config';
 import { UsersService } from './users.service';
 import { PrismaService } from '../prisma.service';
 import { AuthGuard } from '../guards/auth.guard';
+import { AuthModule } from '../auth/auth.module';
 
 @Module({
   imports: [
     NewslettersModule,
     ArticlesModule,
+    AuthModule,
     JwtModule.registerAsync({
       inject: [ConfigService],
       global: true,
