@@ -469,8 +469,6 @@ export class AuthService {
       createdAt: user.createdAt,
       industryId: user.industryId,
       interests: user.interests ?? [],
-      hasCompletedOnboarding:
-        Boolean(user.industryId) && (user.interests?.length ?? 0) > 0,
     };
   }
 
