@@ -48,37 +48,39 @@ export class AuthController {
   @ApiOkResponse({
     description:
       '기존 회원이면 서비스 accessToken을 반환하고, 신규 회원이면 회원가입 완료에 사용할 signupToken을 반환합니다.',
-    schema: {
-      examples: {
-        registered: {
-          summary: '기존 회원 로그인 성공',
-          value: {
-            isRegistered: true,
-            accessToken: 'newdok-access-token',
-            user: {
-              id: 1,
-              loginId: null,
-              phoneNumber: null,
-              subscribeEmail: 'newdok101@newdok.store',
-              nickname: '뉴독이용자',
-              birthYear: '1997',
-              gender: '남자',
-              createdAt: '2026-06-29T00:00:00.000Z',
-              industryId: null,
-              interests: [],
+    content: {
+      'application/json': {
+        examples: {
+          registered: {
+            summary: '기존 회원 로그인 성공',
+            value: {
+              isRegistered: true,
+              accessToken: 'newdok-access-token',
+              user: {
+                id: 1,
+                loginId: null,
+                phoneNumber: null,
+                subscribeEmail: 'newdok101@newdok.store',
+                nickname: '뉴독이용자',
+                birthYear: '1997',
+                gender: '남자',
+                createdAt: '2026-06-29T00:00:00.000Z',
+                industryId: null,
+                interests: [],
+              },
             },
           },
-        },
-        unregistered: {
-          summary: '신규 회원가입 필요',
-          value: {
-            isRegistered: false,
-            signupToken: 'temporary-social-signup-token',
-            profile: {
-              provider: 'KAKAO',
-              providerUserId: '123456789',
-              email: null,
-              nickname: '카카오닉네임',
+          unregistered: {
+            summary: '신규 회원가입 필요',
+            value: {
+              isRegistered: false,
+              signupToken: 'temporary-social-signup-token',
+              profile: {
+                provider: 'KAKAO',
+                providerUserId: '123456789',
+                email: null,
+                nickname: '카카오닉네임',
+              },
             },
           },
         },
