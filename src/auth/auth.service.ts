@@ -17,13 +17,7 @@ import { AppleAuthService } from './apple-auth.service';
 import { SocialSignupDto } from './dtos/social-signup.dto';
 import { SocialAuthDto } from './dtos/social-auth.dto';
 import { AUTH_PLATFORM } from './constants/auth-platform';
-
-type KakaoTokenResponse = {
-  access_token: string;
-  refresh_token?: string;
-  token_type: string;
-  expires_in: number;
-};
+import { createRemoteJWKSet, jwtVerify } from 'jose';
 
 type KakaoUserProfile = {
   providerUserId: string;
@@ -36,14 +30,17 @@ type SocialAuthProfile = {
   providerUserId: string;
   email: string | null;
   nickname: string | null;
-  providerClientId?: string;
-  providerRefreshTokenEncrypted?: string;
 };
 
 type SignupTokenPayload = Omit<SocialAuthProfile, 'nickname'> & {
   type: 'social-signup';
   platform: string;
 };
+
+const KAKAO_ISSUER = 'https://kauth.kakao.com';
+const KAKAO_JWKS = createRemoteJWKSet(
+  new URL('https://kauth.kakao.com/.well-known/jwks.json'),
+);
 
 @Injectable()
 class RetryableMailboxAllocationError extends Error {
@@ -120,8 +117,6 @@ export class AuthService {
         throw new UnauthorizedException('탈퇴한 계정입니다.');
       }
 
-      await this.updateProviderCredential(authAccount.id, profile);
-
       const accessToken = await this.issueAccessToken(authAccount.user.id);
 
       return {
@@ -138,8 +133,6 @@ export class AuthService {
         provider: profile.provider,
         providerUserId: profile.providerUserId,
         email: profile.email,
-        providerClientId: profile.providerClientId,
-        providerRefreshTokenEncrypted: profile.providerRefreshTokenEncrypted,
       } satisfies SignupTokenPayload,
       {
         expiresIn: this.SIGNUP_TOKEN_EXPIRES_IN,
@@ -208,16 +201,6 @@ export class AuthService {
       if (existingAuthAccount.user.deletedAt) {
         throw new UnauthorizedException('탈퇴한 계정입니다.');
       }
-
-      await this.updateProviderCredential(existingAuthAccount.id, {
-        provider: signupTokenPayload.provider,
-        providerUserId: signupTokenPayload.providerUserId,
-        email: signupTokenPayload.email,
-        nickname: null,
-        providerClientId: signupTokenPayload.providerClientId,
-        providerRefreshTokenEncrypted:
-          signupTokenPayload.providerRefreshTokenEncrypted,
-      });
 
       const accessToken = await this.issueAccessToken(
         existingAuthAccount.user.id,
@@ -291,9 +274,6 @@ export class AuthService {
                 provider: signupTokenPayload.provider,
                 providerUserId: signupTokenPayload.providerUserId,
                 email: signupTokenPayload.email,
-                providerClientId: signupTokenPayload.providerClientId,
-                providerRefreshTokenEncrypted:
-                  signupTokenPayload.providerRefreshTokenEncrypted,
                 userId: createdUser.id,
               },
             });
@@ -361,24 +341,7 @@ export class AuthService {
   }
 
   private async authenticateKakao(body: SocialAuthDto) {
-    const { credential } = body;
-    let kakaoAccessToken = credential.accessToken;
-
-    if (!kakaoAccessToken) {
-      if (!credential.authorizationCode || !credential.redirectUri) {
-        throw new BadRequestException(
-          '카카오 code 플로우는 authorizationCode와 redirectUri가 필요합니다.',
-        );
-      }
-
-      const kakaoToken = await this.requestKakaoToken(
-        credential.authorizationCode,
-        credential.redirectUri,
-      );
-      kakaoAccessToken = kakaoToken.access_token;
-    }
-
-    const kakaoUser = await this.retrieveKakaoUser(kakaoAccessToken);
+    const kakaoUser = await this.verifyKakaoIdToken(body.idToken);
 
     return {
       provider: AUTH_PROVIDER.KAKAO,
@@ -389,31 +352,15 @@ export class AuthService {
   }
 
   private async authenticateApple(body: SocialAuthDto) {
-    const { credential } = body;
-
     if (body.platform === AUTH_PLATFORM.ANDROID) {
       throw new BadRequestException(
         'Apple 로그인은 현재 iOS 또는 Web 플랫폼만 지원합니다.',
       );
     }
 
-    if (!credential.authorizationCode || !credential.idToken) {
-      throw new BadRequestException(
-        'Apple 로그인은 authorizationCode와 idToken이 필요합니다.',
-      );
-    }
-
-    if (body.platform === AUTH_PLATFORM.WEB && !credential.redirectUri) {
-      throw new BadRequestException(
-        'Apple Web 로그인은 redirectUri가 필요합니다.',
-      );
-    }
-
     const appleUser = await this.appleAuthService.authenticate(
-      credential.authorizationCode,
-      credential.idToken,
+      body.idToken,
       body.platform,
-      credential.redirectUri,
     );
 
     return {
@@ -421,107 +368,48 @@ export class AuthService {
       providerUserId: appleUser.providerUserId,
       email: appleUser.email,
       nickname: null,
-      providerClientId: appleUser.clientId,
-      providerRefreshTokenEncrypted: appleUser.refreshTokenEncrypted,
     };
-  }
-
-  private async updateProviderCredential(
-    authAccountId: number,
-    profile: SocialAuthProfile,
-  ) {
-    if (!profile.email && !profile.providerClientId) {
-      return;
-    }
-
-    await this.prisma.authAccount.update({
-      where: { id: authAccountId },
-      data: {
-        email: profile.email ?? undefined,
-        providerClientId: profile.providerClientId,
-        providerRefreshTokenEncrypted: profile.providerRefreshTokenEncrypted,
-      },
-    });
   }
 
   private async issueAccessToken(userId: number) {
     return this.jwtService.signAsync({ id: userId });
   }
 
-  private async requestKakaoToken(code: string, redirectUri: string) {
-    const clientId = this.getRequiredEnvValue(
-      'KAKAO_REST_API_KEY',
-      '카카오 로그인 REST API 키 설정이 완료되지 않았습니다.',
-    );
-    const clientSecret = this.configService.get<string>('KAKAO_CLIENT_SECRET');
-    const body = new URLSearchParams({
-      grant_type: 'authorization_code',
-      client_id: clientId,
-      redirect_uri: redirectUri,
-      code,
-    });
-
-    if (clientSecret) {
-      body.set('client_secret', clientSecret);
-    }
-
-    const response = await fetch('https://kauth.kakao.com/oauth/token', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/x-www-form-urlencoded;charset=utf-8',
-      },
-      body,
-    });
-
-    if (!response.ok) {
-      const errorText = await response.text();
-      throw new UnauthorizedException(
-        `카카오 토큰 요청에 실패했습니다. ${errorText}`,
+  private async verifyKakaoIdToken(idToken: string): Promise<KakaoUserProfile> {
+    const audience =
+      this.configService.get<string>('KAKAO_OIDC_AUDIENCE') ??
+      this.configService.get<string>('KAKAO_NATIVE_APP_KEY') ??
+      this.getRequiredEnvValue(
+        'KAKAO_REST_API_KEY',
+        '카카오 로그인 앱 키 설정이 완료되지 않았습니다.',
       );
-    }
 
-    return (await response.json()) as KakaoTokenResponse;
-  }
+    try {
+      const { payload } = await jwtVerify(idToken, KAKAO_JWKS, {
+        issuer: KAKAO_ISSUER,
+        audience,
+        algorithms: ['RS256'],
+      });
 
-  private async retrieveKakaoUser(
-    accessToken: string,
-  ): Promise<KakaoUserProfile> {
-    const response = await fetch('https://kapi.kakao.com/v2/user/me', {
-      method: 'GET',
-      headers: {
-        Authorization: `Bearer ${accessToken}`,
-        'Content-Type': 'application/x-www-form-urlencoded;charset=utf-8',
-      },
-    });
+      if (!payload.sub) {
+        throw new UnauthorizedException(
+          '카카오 사용자 고유 식별값을 가져오지 못했습니다.',
+        );
+      }
 
-    if (!response.ok) {
-      const errorText = await response.text();
-      throw new UnauthorizedException(
-        `카카오 사용자 정보 조회에 실패했습니다. ${errorText}`,
-      );
-    }
-
-    const data = (await response.json()) as {
-      id?: number | string;
-      properties?: {
-        nickname?: string;
+      return {
+        providerUserId: String(payload.sub),
+        email: typeof payload.email === 'string' ? payload.email : null,
+        nickname:
+          typeof payload.nickname === 'string' ? payload.nickname : null,
       };
-      kakao_account?: {
-        email?: string;
-      };
-    };
+    } catch (error) {
+      if (error instanceof UnauthorizedException) {
+        throw error;
+      }
 
-    if (!data.id) {
-      throw new UnauthorizedException(
-        '카카오 사용자 고유 식별값을 가져오지 못했습니다.',
-      );
+      throw new UnauthorizedException('카카오 idToken이 유효하지 않습니다.');
     }
-
-    return {
-      providerUserId: String(data.id),
-      email: data.kakao_account?.email ?? null,
-      nickname: data.properties?.nickname ?? null,
-    };
   }
 
   private async verifySignupToken(token: string) {

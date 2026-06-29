@@ -6,7 +6,7 @@ import {
   UnauthorizedException,
 } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
-import { createCipheriv, createDecipheriv, randomBytes } from 'crypto';
+import { createDecipheriv } from 'crypto';
 import * as fs from 'fs';
 import * as path from 'path';
 import {
@@ -17,14 +17,6 @@ import {
   SignJWT,
 } from 'jose';
 import { AUTH_PLATFORM } from './constants/auth-platform';
-
-type AppleTokenResponse = {
-  access_token: string;
-  expires_in: number;
-  id_token: string;
-  refresh_token: string;
-  token_type: string;
-};
 
 type AppleIdentity = {
   providerUserId: string;
@@ -43,45 +35,15 @@ export class AppleAuthService {
   constructor(private configService: ConfigService) {}
 
   async authenticate(
-    authorizationCode: string,
     identityToken: string,
     platform: string,
-    redirectUri?: string,
   ) {
     const clientId = this.getClientId(platform);
-    const submittedIdentity = await this.verifyIdentityToken(
-      identityToken,
-      clientId,
-    );
-    const tokenResponse = await this.exchangeAuthorizationCode(
-      authorizationCode,
-      clientId,
-      redirectUri,
-    );
-    const exchangedIdentity = await this.verifyIdentityToken(
-      tokenResponse.id_token,
-      clientId,
-    );
-
-    if (submittedIdentity.providerUserId !== exchangedIdentity.providerUserId) {
-      throw new UnauthorizedException(
-        'Apple 인증 정보의 사용자 식별값이 일치하지 않습니다.',
-      );
-    }
-
-    if (!tokenResponse.refresh_token) {
-      throw new UnauthorizedException(
-        'Apple refresh token을 발급받지 못했습니다.',
-      );
-    }
+    const identity = await this.verifyIdentityToken(identityToken, clientId);
 
     return {
-      providerUserId: exchangedIdentity.providerUserId,
-      email: exchangedIdentity.email ?? submittedIdentity.email,
-      clientId,
-      refreshTokenEncrypted: this.encryptRefreshToken(
-        tokenResponse.refresh_token,
-      ),
+      providerUserId: identity.providerUserId,
+      email: identity.email,
     };
   }
 
@@ -132,41 +94,6 @@ export class AppleAuthService {
     throw new BadRequestException(
       'Apple 로그인은 현재 iOS 또는 Web 플랫폼만 지원합니다.',
     );
-  }
-
-  private async exchangeAuthorizationCode(
-    authorizationCode: string,
-    clientId: string,
-    redirectUri?: string,
-  ) {
-    const clientSecret = await this.createClientSecret(clientId);
-    const body = new URLSearchParams({
-      client_id: clientId,
-      client_secret: clientSecret,
-      code: authorizationCode,
-      grant_type: 'authorization_code',
-    });
-
-    if (redirectUri) {
-      body.set('redirect_uri', redirectUri);
-    }
-
-    const response = await fetch('https://appleid.apple.com/auth/token', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/x-www-form-urlencoded;charset=utf-8',
-      },
-      body,
-    });
-
-    if (!response.ok) {
-      const errorText = await response.text();
-      throw new UnauthorizedException(
-        `Apple 토큰 요청에 실패했습니다. ${errorText}`,
-      );
-    }
-
-    return (await response.json()) as AppleTokenResponse;
   }
 
   private async verifyIdentityToken(
@@ -246,20 +173,6 @@ export class AppleAuthService {
     }
 
     return this.privateKeyPromise;
-  }
-
-  private encryptRefreshToken(refreshToken: string) {
-    const iv = randomBytes(12);
-    const cipher = createCipheriv('aes-256-gcm', this.getEncryptionKey(), iv);
-    const encrypted = Buffer.concat([
-      cipher.update(refreshToken, 'utf8'),
-      cipher.final(),
-    ]);
-    const authTag = cipher.getAuthTag();
-
-    return [iv, authTag, encrypted]
-      .map((value) => value.toString('base64'))
-      .join('.');
   }
 
   private decryptRefreshToken(encryptedRefreshToken: string) {

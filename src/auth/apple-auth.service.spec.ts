@@ -40,12 +40,7 @@ describe('AppleAuthService', () => {
     });
   });
 
-  it('refresh token을 암호화하고 복호화한다', () => {
-    const refreshToken = 'apple-refresh-token';
-    const encrypted = (service as any).encryptRefreshToken(refreshToken);
-    const decrypted = (service as any).decryptRefreshToken(encrypted);
-
-    expect(encrypted).not.toBe(refreshToken);
-    expect(decrypted).toBe(refreshToken);
+  it('iOS 플랫폼의 Apple client id를 반환한다', () => {
+    expect(service.getClientId('IOS')).toBe('com.newdok.test');
   });
 });
