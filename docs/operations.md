@@ -102,8 +102,8 @@ prod -> EC2 instance behind ELB + PM2 process: newdok-prod
 ```
 
 과거에는 prod 배포에 ECS/ECR을 사용했지만, 현재 운영 기준에서는 제거했습니다.
-GitHub Actions는 자동 배포가 아니라 build 검증용 CI만 유지합니다. 자동 배포는
-추후 SSH 기반 GitHub Actions 또는 다른 배포 전략으로 다시 설계합니다.
+GitHub Actions는 PR에서 build 검증을 수행하고, `dev`/`main` push 시 SSH로 각
+서버에 접속해 PM2 배포를 실행합니다.
 Dockerfile은 추후 컨테이너 배포를 다시 도입할 수 있어 유지하되, 현재 배포 경로는
 PM2입니다.
 
@@ -114,6 +114,33 @@ PM2입니다.
 - GitHub repository 접근 권한 설정
 - `.development.env` 또는 `.production.env` 서버 로컬 배치, `PORT` 포함
 - 최초 PM2 운영 시 `pm2 startup`, `pm2 save` 설정
+
+GitHub Actions secrets:
+
+| Secret | Description |
+| --- | --- |
+| `SSH_DEV_PRIVATE_KEY` | dev 서버 접속용 private key |
+| `SSH_DEV_KNOWN_HOSTS` | dev 서버 known_hosts 값 |
+| `SSH_DEV_USERNAME` | dev 서버 SSH 사용자 |
+| `SSH_DEV_PUBLIC_IP` | dev 서버 public host 또는 IP |
+| `SSH_PROD_PRIVATE_KEY` | prod 서버 접속용 private key |
+| `SSH_PROD_KNOWN_HOSTS` | prod 서버 known_hosts 값 |
+| `SSH_PROD_USERNAME` | prod 서버 SSH 사용자 |
+| `SSH_PROD_PUBLIC_IP` | prod 서버 public host 또는 IP |
+
+`SSH_*_KNOWN_HOSTS` 값은 로컬에서 다음 형식으로 확인해 GitHub Secrets에 등록합니다.
+
+```bash
+ssh-keyscan -H <server-host-or-ip>
+```
+
+GitHub Actions 트리거:
+
+```text
+pull_request -> build 검증만 수행
+push to dev  -> build 검증 후 dev 서버 배포
+push to main -> build 검증 후 prod 서버 배포
+```
 
 dev 배포 전:
 
@@ -128,7 +155,9 @@ dev 수동 배포:
 ```bash
 ssh newdok-dev
 cd ~/newdok-backend
-git pull origin dev
+git fetch origin dev
+git checkout dev
+git pull --ff-only origin dev
 npm ci
 npx prisma generate
 npm run build
@@ -149,7 +178,9 @@ prod 수동 배포:
 ```bash
 ssh newdok-prod
 cd ~/newdok-backend
-git pull origin main
+git fetch origin main
+git checkout main
+git pull --ff-only origin main
 npm ci
 npx prisma generate
 npm run build

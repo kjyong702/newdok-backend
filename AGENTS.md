@@ -175,7 +175,7 @@
 
 - 현재 dev/prod 배포는 EC2/Lightsail 인스턴스에서 PM2 수동 배포를 기준으로 합니다.
 - `ecosystem.config.js`의 PM2 프로세스명은 `newdok-dev`, `newdok-prod`입니다.
-- GitHub Actions는 현재 자동 배포가 아니라 CI build 검증만 수행합니다.
+- GitHub Actions는 PR에서 CI build 검증을 수행하고, `dev`/`main` push 시 SSH 기반 PM2 배포를 수행합니다.
 - DB 스키마 변경이 없으면 `db push`를 실행하지 않습니다.
 - dev 배포 전 `.development.env`에 필요한 env가 있는지 확인합니다.
 - prod 배포 전 `.production.env`에 prod용 값이 들어있는지 확인합니다.

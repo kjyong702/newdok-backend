@@ -1,4 +1,4 @@
-name: ci
+name: ci-cd
 
 on:
   push:
@@ -31,3 +31,59 @@ jobs:
 
       - name: Build
         run: npm run build
+
+  deploy-dev:
+    if: github.event_name == 'push' && github.ref == 'refs/heads/dev'
+    runs-on: ubuntu-22.04
+    needs: build
+    steps:
+      - name: Set up SSH
+        run: |
+          mkdir -p ~/.ssh
+          echo "${{ secrets.SSH_DEV_PRIVATE_KEY }}" > ~/.ssh/id_rsa
+          chmod 600 ~/.ssh/id_rsa
+          echo "${{ secrets.SSH_DEV_KNOWN_HOSTS }}" >> ~/.ssh/known_hosts
+          chmod 644 ~/.ssh/known_hosts
+
+      - name: Deploy dev server
+        run: |
+          ssh ${{ secrets.SSH_DEV_USERNAME }}@${{ secrets.SSH_DEV_PUBLIC_IP }} 'bash -lc "
+            set -e
+            cd ~/newdok-backend
+            git fetch origin dev
+            git checkout dev
+            git pull --ff-only origin dev
+            npm ci
+            npx prisma generate
+            npm run build
+            npm run deploy:dev
+            pm2 status
+          "'
+
+  deploy-prod:
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    runs-on: ubuntu-22.04
+    needs: build
+    steps:
+      - name: Set up SSH
+        run: |
+          mkdir -p ~/.ssh
+          echo "${{ secrets.SSH_PROD_PRIVATE_KEY }}" > ~/.ssh/id_rsa
+          chmod 600 ~/.ssh/id_rsa
+          echo "${{ secrets.SSH_PROD_KNOWN_HOSTS }}" >> ~/.ssh/known_hosts
+          chmod 644 ~/.ssh/known_hosts
+
+      - name: Deploy prod server
+        run: |
+          ssh ${{ secrets.SSH_PROD_USERNAME }}@${{ secrets.SSH_PROD_PUBLIC_IP }} 'bash -lc "
+            set -e
+            cd ~/newdok-backend
+            git fetch origin main
+            git checkout main
+            git pull --ff-only origin main
+            npm ci
+            npx prisma generate
+            npm run build
+            npm run deploy:prod
+            pm2 status
+          "'
