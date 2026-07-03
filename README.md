@@ -53,6 +53,14 @@ Newdok은 사용자가 뉴스레터를 탐색하고, 추천받고, 구독 이메
 
 </div>
 
+상세 문서:
+
+- [Project Summary](docs/project-summary.md)
+- [Architecture](docs/architecture.md)
+- [Social Login](docs/auth-social-login.md)
+- [Mailbox And POP3](docs/mailbox-pop3.md)
+- [Operations](docs/operations.md)
+
 ### Core Domains
 
 - `User`: 뉴독 사용자 정보와 구독 이메일 계정 연결을 관리합니다.
@@ -168,6 +176,8 @@ npm install
 - `.development.env`
 - `.production.env`
 
+비밀값 없는 예시는 [.env.example](.env.example)을 참고합니다.
+
 주요 환경변수:
 
 ```text
@@ -179,9 +189,7 @@ KAKAO_REST_API_KEY
 KAKAO_OIDC_AUDIENCE
 
 APPLE_CLIENT_ID
-APPLE_TEAM_ID
-APPLE_KEY_ID
-APPLE_PRIVATE_KEY_BASE64
+APPLE_WEB_CLIENT_ID
 
 TWILIO_ACCOUNT_SID
 TWILIO_AUTH_TOKEN
@@ -235,4 +243,3 @@ Swagger 문서는 서버 실행 후 `/api`에서 확인합니다.
 - 소셜 계정은 `provider + providerUserId` 기준으로 식별합니다.
 - POP3 스케줄러는 삭제된 사용자(`deletedAt` 존재)를 수집 대상에서 제외해야 합니다.
 - Swagger response 예시는 앱 연동 기준으로 유지합니다.
-
