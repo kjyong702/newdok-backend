@@ -76,6 +76,15 @@ prod:
 npm run db-push:prod
 ```
 
+DB에서 현재 스키마를 Prisma schema로 introspect해야 하는 경우에는 다음 명령을
+사용합니다. 운영 DB 기준 변경사항을 로컬 schema에 반영하는 작업이므로 실행 전
+목적을 명확히 확인합니다.
+
+```bash
+npm run db-pull:dev
+npm run db-pull:prod
+```
+
 주의사항:
 
 - prod는 dev에서 먼저 검증한 후 진행합니다.

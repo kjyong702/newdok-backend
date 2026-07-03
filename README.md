@@ -215,6 +215,8 @@ prod DB 변경은 dev에서 검증한 뒤 실행합니다.
 | `npm run build` | NestJS 빌드 |
 | `npm run db-push:dev` | dev DB 스키마 반영 |
 | `npm run db-push:prod` | prod DB 스키마 반영 |
+| `npm run db-pull:dev` | dev DB 스키마를 Prisma schema로 introspect |
+| `npm run db-pull:prod` | prod DB 스키마를 Prisma schema로 introspect |
 | `npm run db-studio:dev` | dev Prisma Studio 실행 |
 | `npm run db-studio:prod` | prod Prisma Studio 실행 |
 | `npm run import:newsletters:dev` | dev 뉴스레터 CSV import |

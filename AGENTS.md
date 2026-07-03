@@ -163,6 +163,8 @@
 | 빌드 | `npm run build` |
 | dev DB push | `npm run db-push:dev` |
 | prod DB push | `npm run db-push:prod` |
+| dev DB pull | `npm run db-pull:dev` |
+| prod DB pull | `npm run db-pull:prod` |
 | dev 뉴스레터 import | `npm run import:newsletters:dev` |
 | prod 뉴스레터 import | `npm run import:newsletters:prod` |
 
