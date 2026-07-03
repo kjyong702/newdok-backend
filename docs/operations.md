@@ -111,6 +111,8 @@ PM2입니다.
 
 - Node.js와 npm 설치
 - PM2 전역 설치
+- nvm을 사용하는 서버는 비대화형 SSH 세션에서도 `~/.nvm/nvm.sh`를 source해
+  `node`, `npm`, `pm2`가 인식되어야 합니다.
 - GitHub repository 접근 권한 설정
 - `.development.env` 또는 `.production.env` 서버 로컬 배치, `PORT` 포함
 - 최초 PM2 운영 시 `pm2 startup`, `pm2 save` 설정

@@ -49,6 +49,10 @@ jobs:
         run: |
           ssh ${{ secrets.SSH_DEV_USERNAME }}@${{ secrets.SSH_DEV_PUBLIC_IP }} 'bash -lc "
             set -e
+            export NVM_DIR=\"\$HOME/.nvm\"
+            [ -s \"\$NVM_DIR/nvm.sh\" ] && . \"\$NVM_DIR/nvm.sh\"
+            node -v
+            npm -v
             cd ~/newdok-backend
             git fetch origin dev
             git checkout dev
@@ -77,6 +81,10 @@ jobs:
         run: |
           ssh ${{ secrets.SSH_PROD_USERNAME }}@${{ secrets.SSH_PROD_PUBLIC_IP }} 'bash -lc "
             set -e
+            export NVM_DIR=\"\$HOME/.nvm\"
+            [ -s \"\$NVM_DIR/nvm.sh\" ] && . \"\$NVM_DIR/nvm.sh\"
+            node -v
+            npm -v
             cd ~/newdok-backend
             git fetch origin main
             git checkout main
