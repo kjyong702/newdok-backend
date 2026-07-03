@@ -162,6 +162,7 @@ CSV export 파일은 운영 데이터이므로 커밋하지 않습니다.
 - Node.js
 - npm
 - MySQL database
+- PM2, 배포 서버에서 필요
 
 ### Install
 
@@ -211,8 +212,12 @@ prod DB 변경은 dev에서 검증한 뒤 실행합니다.
 
 | Command | Description |
 | --- | --- |
-| `npm run start` | 개발 서버 실행 |
+| `npm run start` | 개발 서버 실행, `start:dev` alias |
+| `npm run start:dev` | 개발 서버 watch 모드 실행 |
+| `npm run start:prod` | 빌드 산출물 production 모드 실행 |
 | `npm run build` | NestJS 빌드 |
+| `npm run deploy:dev` | PM2로 dev 프로세스 시작 또는 재시작 |
+| `npm run deploy:prod` | PM2로 prod 프로세스 시작 또는 재시작 |
 | `npm run db-push:dev` | dev DB 스키마 반영 |
 | `npm run db-push:prod` | prod DB 스키마 반영 |
 | `npm run db-pull:dev` | dev DB 스키마를 Prisma schema로 introspect |

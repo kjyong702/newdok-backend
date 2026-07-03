@@ -94,6 +94,27 @@ npm run db-pull:prod
 
 ## Deployment Checklist
 
+현재 배포 기준:
+
+```text
+dev  -> EC2/Lightsail instance + PM2 process: newdok-dev
+prod -> EC2 instance behind ELB + PM2 process: newdok-prod
+```
+
+과거에는 prod 배포에 ECS/ECR을 사용했지만, 현재 운영 기준에서는 제거했습니다.
+GitHub Actions는 자동 배포가 아니라 build 검증용 CI만 유지합니다. 자동 배포는
+추후 SSH 기반 GitHub Actions 또는 다른 배포 전략으로 다시 설계합니다.
+Dockerfile은 추후 컨테이너 배포를 다시 도입할 수 있어 유지하되, 현재 배포 경로는
+PM2입니다.
+
+서버 전제조건:
+
+- Node.js와 npm 설치
+- PM2 전역 설치
+- GitHub repository 접근 권한 설정
+- `.development.env` 또는 `.production.env` 서버 로컬 배치, `PORT` 포함
+- 최초 PM2 운영 시 `pm2 startup`, `pm2 save` 설정
+
 dev 배포 전:
 
 - `npm run build` 통과
@@ -102,6 +123,19 @@ dev 배포 전:
 - Swagger UI 최신 빌드 반영 확인
 - POP3 scheduler 실행 여부 확인
 
+dev 수동 배포:
+
+```bash
+ssh newdok-dev
+cd ~/newdok-backend
+git pull origin dev
+npm ci
+npx prisma generate
+npm run build
+npm run deploy:dev
+pm2 logs newdok-dev
+```
+
 prod 배포 전:
 
 - dev 앱에서 동일 플로우 검증
@@ -109,6 +143,22 @@ prod 배포 전:
 - prod DB schema 반영 필요 여부 확인
 - 운영 데이터 import 또는 삭제 작업 여부 확인
 - 배포 후 API/로그 확인
+
+prod 수동 배포:
+
+```bash
+ssh newdok-prod
+cd ~/newdok-backend
+git pull origin main
+npm ci
+npx prisma generate
+npm run build
+npm run deploy:prod
+pm2 logs newdok-prod
+```
+
+프로세스 구성이 처음 등록되었거나 서버 재부팅 후 자동 복구 설정을 갱신해야 할 때는
+배포 후 `pm2 save`를 실행합니다.
 
 ## Social Login Deployment Checks
 
