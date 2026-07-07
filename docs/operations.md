@@ -144,6 +144,12 @@ push to dev  -> build 검증 후 dev 서버 배포
 push to main -> build 검증 후 prod 서버 배포
 ```
 
+현재 검증 상태:
+
+- dev 자동 배포는 GitHub Actions에서 실제 성공을 확인했습니다.
+- prod 자동 배포는 동일 구조로 구성되어 있으나, `main` merge 시점에 최초 실행 결과를
+  별도로 확인해야 합니다.
+
 dev 배포 전:
 
 - `npm run build` 통과

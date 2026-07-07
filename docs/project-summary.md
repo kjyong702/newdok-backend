@@ -21,6 +21,7 @@ Newdok Backend는 단순 CRUD 프로젝트가 아니라 외부 메일 서버, �
 - Kakao / Apple OIDC 소셜 로그인 전환
 - 운영자가 관리하는 뉴스레터 데이터를 CSV로 import
 - dev/prod DB와 배포 절차 분리 운영
+- GitHub Actions 기반 SSH/PM2 배포 자동화
 
 ## Technical Highlights
 
@@ -119,8 +120,30 @@ Cron
 - Swagger request/response 예시 보강
 - env 파일과 secret 관리 기준 정리
 - dev/prod DB push 절차 분리
+- GitHub Actions 기반 CI/CD와 PM2 배포 스크립트 정리
 - POP3 로그 해석 기준 정리
 - AI agent 작업 지침과 프로젝트 문서화 시작
+
+### 6. CI/CD Deployment Automation
+
+기존에는 EC2/Lightsail 서버에 SSH로 접속해 `git pull`, `npm install`, `prisma
+generate`, `build`, `pm2 restart`를 수동으로 실행했습니다. 이를 GitHub Actions와
+SSH 기반 배포로 전환했습니다.
+
+구현 포인트:
+
+- PR 단계에서는 `npm ci`, `prisma generate`, `build` 검증만 수행
+- `dev` 브랜치 push 시 dev 서버에 SSH 접속 후 PM2 배포 실행
+- `main` 브랜치 push 시 prod 서버에 SSH 접속 후 PM2 배포 실행
+- PM2 프로세스명은 `newdok-dev`, `newdok-prod`로 표준화
+- 서버의 Node.js가 nvm 기반이라 비대화형 SSH 세션에서 `npm`을 찾지 못하는 문제를
+  `~/.nvm/nvm.sh` 명시 로드로 해결
+
+면접 설명 포인트:
+
+- 수동 배포 절차를 CI/CD로 자동화해 반복 작업과 실수 가능성을 줄임
+- PR 검증과 merge 후 배포 트리거를 분리해 배포 안정성을 확보
+- interactive shell과 non-interactive shell의 환경 로딩 차이를 원인 분석해 해결
 
 ## Current Trade-offs
 
@@ -129,6 +152,8 @@ Cron
 - Kakao와 Apple 계정은 현재 독립 계정으로 생성될 수 있습니다.
 - POP3 신규 메일 판단은 현재 UIDL 개수와 저장 Article 수를 비교하는 방식입니다.
 - 뉴스레터 운영 데이터는 아직 완전한 어드민이 아니라 CSV import 중심입니다.
+- prod 자동 배포는 workflow 구성과 secret 등록은 완료했지만, 실제 prod 반영은 main
+  merge 시점에 별도 확인이 필요합니다.
 
 이 항목들은 미완성이라기보다 현재 서비스 단계에서 의도적으로 범위를 나눈
 부분입니다. 추후 사용량과 운영 요구가 커지면 단계적으로 개선할 수 있습니다.
@@ -145,6 +170,7 @@ Cron
 - Cron Scheduler
 - Mail Parsing
 - Data Import Automation
+- GitHub Actions CI/CD
+- EC2 / PM2 Deployment
 - Swagger API Documentation
 - Production Data Operations
-
