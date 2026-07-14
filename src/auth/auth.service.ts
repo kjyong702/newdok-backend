@@ -2,6 +2,7 @@ import {
   BadRequestException,
   ConflictException,
   Injectable,
+  Logger,
   ServiceUnavailableException,
   UnauthorizedException,
 } from '@nestjs/common';
@@ -53,6 +54,7 @@ class RetryableMailboxAllocationError extends Error {
 export class AuthService {
   private readonly SIGNUP_TOKEN_EXPIRES_IN = '30m';
   private readonly SIGNUP_CREATE_RETRY_LIMIT = 3;
+  private readonly logger = new Logger(AuthService.name);
 
   constructor(
     private prisma: PrismaService,
@@ -408,8 +410,36 @@ export class AuthService {
         throw error;
       }
 
+      this.logger.warn(
+        `Kakao idToken verification failed: ${JSON.stringify(
+          this.getOidcVerificationErrorLog(error),
+        )}`,
+      );
+
       throw new UnauthorizedException('카카오 idToken이 유효하지 않습니다.');
     }
+  }
+
+  private getOidcVerificationErrorLog(error: unknown) {
+    if (!(error instanceof Error)) {
+      return { errorType: typeof error };
+    }
+
+    const oidcError = error as Error & {
+      code?: unknown;
+      claim?: unknown;
+      reason?: unknown;
+    };
+
+    return {
+      name: oidcError.name,
+      code: typeof oidcError.code === 'string' ? oidcError.code : undefined,
+      claim:
+        typeof oidcError.claim === 'string' ? oidcError.claim : undefined,
+      reason:
+        typeof oidcError.reason === 'string' ? oidcError.reason : undefined,
+      message: oidcError.message,
+    };
   }
 
   private async verifySignupToken(token: string) {
