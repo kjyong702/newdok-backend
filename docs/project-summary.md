@@ -134,10 +134,13 @@ SSH 기반 배포로 전환했습니다.
 
 - PR 단계에서는 `npm ci`, `prisma generate`, `build` 검증만 수행
 - `dev` 브랜치 push 시 dev 서버에 SSH 접속 후 PM2 배포 실행
-- `main` 브랜치 push 시 prod 서버에 SSH 접속 후 PM2 배포 실행
+- `main` 브랜치 push 시 `PROD_DEPLOY_ENABLED=true`인 경우에만 prod 서버에 SSH
+  접속 후 PM2 배포 실행
 - PM2 프로세스명은 `newdok-dev`, `newdok-prod`로 표준화
 - 서버의 Node.js가 nvm 기반이라 비대화형 SSH 세션에서 `npm`을 찾지 못하는 문제를
   `~/.nvm/nvm.sh` 명시 로드로 해결
+- dev API는 Lightsail 앞단에 Nginx와 Let's Encrypt를 구성해 HTTPS를 적용하고,
+  NestJS 프로세스는 내부 `3001` 포트로 분리
 
 면접 설명 포인트:
 
@@ -152,8 +155,10 @@ SSH 기반 배포로 전환했습니다.
 - Kakao와 Apple 계정은 현재 독립 계정으로 생성될 수 있습니다.
 - POP3 신규 메일 판단은 현재 UIDL 개수와 저장 Article 수를 비교하는 방식입니다.
 - 뉴스레터 운영 데이터는 아직 완전한 어드민이 아니라 CSV import 중심입니다.
-- prod 자동 배포는 workflow 구성과 secret 등록은 완료했지만, 실제 prod 반영은 main
-  merge 시점에 별도 확인이 필요합니다.
+- production 인프라는 서비스 재개 전까지 비용 절감을 위해 제거했으며, prod 자동
+  배포는 Repository Variable로 비활성화했습니다.
+- production 재개 시 새 도메인과 인프라를 구성하고 prod SSH Secrets 및
+  `PROD_DEPLOY_ENABLED`를 다시 등록해야 합니다.
 
 이 항목들은 미완성이라기보다 현재 서비스 단계에서 의도적으로 범위를 나눈
 부분입니다. 추후 사용량과 운영 요구가 커지면 단계적으로 개선할 수 있습니다.

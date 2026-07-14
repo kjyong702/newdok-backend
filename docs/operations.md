@@ -97,13 +97,14 @@ npm run db-pull:prod
 현재 배포 기준:
 
 ```text
-dev  -> EC2/Lightsail instance + PM2 process: newdok-dev
-prod -> EC2 instance behind ELB + PM2 process: newdok-prod
+dev  -> Lightsail + Nginx/Let's Encrypt + PM2 process: newdok-dev
+prod -> infrastructure suspended; rebuild when production service resumes
 ```
 
 과거에는 prod 배포에 ECS/ECR을 사용했지만, 현재 운영 기준에서는 제거했습니다.
-GitHub Actions는 PR에서 build 검증을 수행하고, `dev`/`main` push 시 SSH로 각
-서버에 접속해 PM2 배포를 실행합니다.
+GitHub Actions는 PR에서 build 검증을 수행하고, `dev` push 시 SSH로 dev 서버에
+접속해 PM2 배포를 실행합니다. `main` push의 prod 배포는
+`PROD_DEPLOY_ENABLED=true`일 때만 실행합니다.
 Dockerfile은 추후 컨테이너 배포를 다시 도입할 수 있어 유지하되, 현재 배포 경로는
 PM2입니다.
 
@@ -116,6 +117,7 @@ PM2입니다.
 - GitHub repository 접근 권한 설정
 - `.development.env` 또는 `.production.env` 서버 로컬 배치, `PORT` 포함
 - 최초 PM2 운영 시 `pm2 startup`, `pm2 save` 설정
+- dev는 `.development.env`의 `PORT=3001`, Nginx의 `80/443` reverse proxy 사용
 
 GitHub Actions secrets:
 
@@ -130,6 +132,9 @@ GitHub Actions secrets:
 | `SSH_PROD_USERNAME` | prod 서버 SSH 사용자 |
 | `SSH_PROD_PUBLIC_IP` | prod 서버 public host 또는 IP |
 
+prod 서버를 재구축할 때 위 prod Secrets를 새 서버 값으로 등록하고, Repository
+Variable `PROD_DEPLOY_ENABLED=true`를 추가합니다.
+
 `SSH_*_KNOWN_HOSTS` 값은 로컬에서 다음 형식으로 확인해 GitHub Secrets에 등록합니다.
 
 ```bash
@@ -141,14 +146,15 @@ GitHub Actions 트리거:
 ```text
 pull_request -> build 검증만 수행
 push to dev  -> build 검증 후 dev 서버 배포
-push to main -> build 검증 후 prod 서버 배포
+push to main -> build 검증 후 PROD_DEPLOY_ENABLED=true일 때만 prod 서버 배포
 ```
 
 현재 검증 상태:
 
 - dev 자동 배포는 GitHub Actions에서 실제 성공을 확인했습니다.
-- prod 자동 배포는 동일 구조로 구성되어 있으나, `main` merge 시점에 최초 실행 결과를
-  별도로 확인해야 합니다.
+- prod 인프라와 prod SSH Secrets는 비용 절감을 위해 제거했습니다.
+- prod 자동 배포는 workflow를 유지하되 `PROD_DEPLOY_ENABLED` 조건으로 비활성화한
+  상태입니다.
 
 dev 배포 전:
 
@@ -175,6 +181,8 @@ pm2 logs newdok-dev
 
 prod 배포 전:
 
+- production 인프라 재구축 및 새 API 도메인 HTTPS 연결
+- `SSH_PROD_*` Secrets 등록 및 `PROD_DEPLOY_ENABLED=true` 설정
 - dev 앱에서 동일 플로우 검증
 - `.production.env` prod 값 확인
 - prod DB schema 반영 필요 여부 확인
@@ -198,6 +206,40 @@ pm2 logs newdok-prod
 
 프로세스 구성이 처음 등록되었거나 서버 재부팅 후 자동 복구 설정을 갱신해야 할 때는
 배포 후 `pm2 save`를 실행합니다.
+
+## Dev HTTPS
+
+현재 dev API 주소:
+
+```text
+https://api-dev.newdok.store
+https://api-dev.newdok.store/api
+```
+
+구성:
+
+```text
+api-dev.newdok.store A record
+  -> Lightsail static IP
+  -> Nginx :80/:443
+  -> NestJS/PM2 :3001
+```
+
+- `newdok.store` DNS는 IWINV에서 관리하며 기존 메일 MX/TXT 설정과 분리해
+  `api-dev` A 레코드만 사용합니다.
+- Nginx 설정은 `/etc/nginx/sites-available/newdok-dev`에 있습니다.
+- HTTP 요청은 HTTPS로 리다이렉트합니다.
+- Let's Encrypt 인증서는 Certbot timer가 자동 갱신합니다.
+
+점검 명령:
+
+```bash
+sudo nginx -t
+sudo systemctl status nginx
+sudo systemctl status certbot.timer
+sudo certbot certificates
+sudo certbot renew --dry-run --no-random-sleep-on-renew
+```
 
 ## Social Login Deployment Checks
 
