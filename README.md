@@ -1,12 +1,13 @@
+
 # Newdok Backend
 
 <div align="center">
 
-![Newdok logo](https://kr.object.ncloudstorage.com/newdok-bucket/%EB%89%B4%EB%8F%85%20%EB%A1%9C%EA%B3%A0%28300x100%29.png)
+![Newdok logo](docs/images/logo.png)
 
 ### 25-39 직장인을 위한 뉴스레터 큐레이팅 서비스
 
-![Newdok preview](https://kr.object.ncloudstorage.com/newdok-bucket/%EB%89%B4%EB%8F%85%20%ED%94%84%EB%A6%AC%EB%B7%B0%282000x1000%29.png)
+[App Store](https://apps.apple.com/kr/app/id6749274214)
 
 </div>
 
@@ -15,9 +16,35 @@
 Newdok은 사용자가 뉴스레터를 탐색하고, 추천받고, 구독 이메일을 통해 수신한
 아티클을 한 곳에서 관리할 수 있게 하는 뉴스레터 큐레이션 서비스입니다.
 
-이 저장소는 Newdok 서비스의 백엔드 API입니다. 사용자 인증, 소셜 로그인,
-구독 이메일 계정 할당, 뉴스레터 브랜드 데이터 관리, POP3 기반 아티클 수집,
-구독/북마크/검색 API를 담당합니다.
+세 가지 불편함에서 시작했습니다.
+
+1. 다양한 뉴스레터 브랜드가 있지만 직접 찾아 구독을 신청하기 어렵다
+2. 구독을 신청해도 내가 어떤 뉴스레터를 구독 중인지 모른다
+3. 개인 이메일로 구독하면 뉴스레터가 다른 메일과 섞여 읽기 힘들다
+
+그래서 Newdok은 사용자에게 뉴스레터 구독 전용 이메일을 발급하고, 그 메일함에
+도착한 뉴스레터를 서버가 수집해 앱에서 모아 볼 수 있게 합니다.
+
+이 저장소는 Newdok 서비스의 백엔드 API입니다.
+
+## Screenshots
+
+| 온보딩 추천 | 홈 (오늘의 아티클) | 아티클 뷰어 + 북마크 | 북마크함 |
+| --- | --- | --- | --- |
+| ![온보딩 추천](docs/images/screenshot-1.png) | ![홈](docs/images/screenshot-2.png) | ![아티클 뷰어](docs/images/screenshot-3.png) | ![북마크함](docs/images/screenshot-4.png) |
+| 산업군/관심사 기반 맞춤 추천 API | POP3로 수집된 아티클 피드 | 수신 메일 본문 렌더링과 북마크 저장 | 북마크 조회, 카테고리 필터와 정렬 |
+
+## My Role
+
+기획, 디자인, 앱(iOS/AOS), 백엔드로 구성된 팀 프로젝트에서 **백엔드를 전담**하고
+있습니다 (2023.06 ~ 현재).
+
+- 초기 설계부터 개발, 배포, 운영까지 백엔드 전 단계 담당
+- 데이터베이스 ERD 설계와 REST API 개발
+- POP3 프로토콜과 Cron Job 기반 뉴스레터 수집 파이프라인 구축
+- Kakao / Apple OIDC 소셜 로그인 설계와 구현
+- EC2, Docker/ECS, Lightsail/PM2로 이어지는 배포 인프라 구성과 운영 (아래 Deployment Journey)
+- 베타 출시 후 지속적인 기능 QA와 Jest 테스트 코드 점진 도입
 
 ## Main Features
 
@@ -38,20 +65,27 @@ Newdok은 사용자가 뉴스레터를 탐색하고, 추천받고, 구독 이메
 | Runtime | Node.js |
 | Framework | NestJS, TypeScript |
 | ORM | Prisma |
-| Database | MySQL, Railway |
+| Database | MySQL (Railway) |
 | Auth | JWT, Kakao OIDC, Apple OIDC |
 | Mail Sync | POP3, mailparser |
+| Deploy | AWS Lightsail, Nginx, PM2, GitHub Actions |
 | API Docs | Swagger |
 | Validation | class-validator, class-transformer |
 | Test | Jest |
 
 ## Architecture
 
-<div align="center">
+```text
+iOS / AOS App
+  -> Nginx (HTTPS, Let's Encrypt)
+  -> NestJS API + PM2 (AWS Lightsail)
+       +-- MySQL (Railway)
+       +-- Mail server (POP3S)
+       +-- Kakao / Apple OIDC JWKS
+       +-- Twilio SMS
 
-<img width="80%" src="https://kr.object.ncloudstorage.com/newdok-bucket/%EC%84%9C%EB%B2%84%20%EC%95%84%ED%82%A4%ED%85%8D%EC%B2%98%28%EC%8B%A0%EB%B2%84%EC%A0%84%29.png" alt="Newdok server architecture" />
-
-</div>
+GitHub Actions --(SSH deploy)--> AWS Lightsail
+```
 
 상세 문서:
 
@@ -61,6 +95,35 @@ Newdok은 사용자가 뉴스레터를 탐색하고, 추천받고, 구독 이메
 - [Mailbox And POP3](docs/mailbox-pop3.md)
 - [Operations](docs/operations.md)
 
+## Deployment Journey
+
+배포 인프라는 서비스 단계에 맞춰 세 번 바뀌었습니다.
+
+```text
+1) AWS EC2 수동 배포 (2023 베타)
+   -> 초기 출시. 서버에 직접 접속해 빌드/재시작하는 방식의 운영 부담 확인
+
+2) Docker + AWS ECS 컨테이너 배포 전환
+   -> 컨테이너 오케스트레이션을 직접 구축해보기 위한 전환.
+      쿠버네티스 대비 접근성이 좋은 ECS를 선택해 Dockerfile 작성,
+      태스크 정의, GitHub Actions 빌드/배포 파이프라인까지 구성.
+      구축 후에는 배포와 롤백 관리가 간편해짐
+
+3) AWS Lightsail + Nginx + PM2 (현재)
+   -> 서비스 재활성 시점에 현재 규모와 운영 비용을 다시 판단.
+      소규모 트래픽에서 ECS 유지 비용과 관리 오버헤드 대비 실익이
+      낮아 Lightsail + PM2 구성으로 재조정. Nginx와 Let's Encrypt로
+      HTTPS를 구성하고 GitHub Actions SSH 배포로 자동화 유지
+```
+
+각 단계의 구성은 git 히스토리에 남아 있습니다 (Dockerfile, 배포 워크플로 커밋).
+
+## ERD
+
+![Newdok ERD](docs/images/erd.png)
+
+필드 상세는 [prisma/schema.prisma](prisma/schema.prisma)를 참고합니다.
+
 ### Core Domains
 
 - `User`: 뉴독 사용자 정보와 구독 이메일 계정 연결을 관리합니다.
@@ -69,8 +132,27 @@ Newdok은 사용자가 뉴스레터를 탐색하고, 추천받고, 구독 이메
 - `MailboxPool`: 사용자에게 할당 가능한 구독 이메일 계정 풀을 관리합니다.
 - `Newsletter`: 뉴스레터 브랜드 정보와 산업군/관심사/요일 필터 정보를 관리합니다.
 - `Article`: POP3로 수신한 뉴스레터 아티클을 저장합니다.
-- `Subscription`: 사용자와 뉴스레터의 구독 관계를 관리합니다.
+- `Subscription(NewslettersOnUsers)`: 사용자와 뉴스레터의 구독 관계를 관리합니다.
 - `Bookmark`: 사용자의 아티클 북마크를 관리합니다.
+
+## Project Structure
+
+```text
+src/
+├── auth/         # SMS 인증, 소셜 로그인(Kakao/Apple OIDC), 소셜 회원가입
+├── users/        # 사용자 정보 조회/수정, 탈퇴
+├── newsletters/  # 뉴스레터 목록, 구독 신청/중지/재개
+├── articles/     # 아티클 조회, 북마크, POP3 수집 실행
+├── search/       # 뉴스레터/아티클 검색
+├── options/      # 산업군, 관심사, 요일 옵션 조회
+├── scheduler/    # Cron 기반 POP3 자동 실행
+├── guards/       # 인증 가드
+└── common/       # 공통 유틸
+prisma/           # 스키마, 마이그레이션
+scripts/          # 뉴스레터 CSV import 등 운영 스크립트
+public/           # 뉴스레터 브랜드 이미지 (정적 서빙: /public)
+docs/             # 아키텍처/운영 상세 문서
+```
 
 ## Authentication Flow
 
@@ -150,10 +232,6 @@ MailboxPool 정책:
 ```
 
 CSV export 파일은 운영 데이터이므로 커밋하지 않습니다.
-
-## ERD
-
-![Newdok ERD](https://kr.object.ncloudstorage.com/newdok-bucket/%EB%89%B4%EB%8F%85%20ERD%2824.09%20%EC%B5%9C%EC%8B%A0%29.png)
 
 ## Getting Started
 
