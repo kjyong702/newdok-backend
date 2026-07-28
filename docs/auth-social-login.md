@@ -112,14 +112,15 @@ Request:
     },
     {
       "type": "MARKETING_INFORMATION_RECEIPT",
-      "agreed": true
+      "agreed": false
     }
   ]
 }
 ```
 
 서버는 `agreements`의 항목을 현재 약관 정책과 비교해 필수 약관 동의 여부를
-검증하고, UserConsent에 항목별 이력을 저장합니다.
+검증하고, UserConsent에 항목별 이력을 저장합니다. 마케팅 정보 수신 동의는 선택
+항목이므로 `agreed: false`여도 회원가입할 수 있습니다.
 
 ## Kakao OIDC
 

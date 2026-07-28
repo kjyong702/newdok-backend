@@ -14,7 +14,7 @@ export const USER_CONSENT_POLICY = {
     version: '2026-06-01',
   },
   [USER_CONSENT_TYPE.MARKETING_INFORMATION_RECEIPT]: {
-    isRequired: true,
+    isRequired: false,
     version: '2026-06-01',
   },
 } as const;
