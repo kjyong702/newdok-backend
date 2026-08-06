@@ -1,6 +1,6 @@
 # Project Summary
 
-이 문서는 Newdok Backend를 이력서, 포트폴리오, 면접에서 설명하기 위한 핵심 요약입니다.
+이 문서는 Newdok Backend의 아키텍처와 핵심 설계 판단을 요약합니다.
 
 ## One-line Description
 
@@ -37,7 +37,7 @@ Newdok Backend는 단순 CRUD 프로젝트가 아니라 외부 메일 서버, �
 - 탈퇴 또는 기존 데이터 정리 시 `RETIRED` 처리
 - 한 번 사용된 이메일은 외부 구독 상태와 수신 이력 때문에 재사용하지 않음
 
-면접 설명 포인트:
+설계 판단:
 
 - 단순 user email이 아니라 외부 뉴스레터 구독과 연결된 리소스 풀로 모델링
 - 데이터 재사용보다 수신 이력 무결성과 운영 안전성을 우선
@@ -68,7 +68,7 @@ Cron
 - 구독 중지 상태에서는 Article을 저장하되 `isVisible=false`
 - 삭제 사용자는 수집 대상에서 제외
 
-면접 설명 포인트:
+설계 판단:
 
 - 외부 프로토콜 연동에서 timeout, 중복 실행, 부분 실패를 고려
 - 스케줄러와 수동 실행 API를 모두 제공하되 운영 리스크를 문서화
@@ -86,7 +86,7 @@ Cron
 - 신규 소셜 계정은 `signupToken`으로 회원가입 단계 분리
 - 약관 동의 이력을 `UserConsent`에 항목별 저장
 
-면접 설명 포인트:
+설계 판단:
 
 - OAuth/OIDC 흐름과 앱 SDK 기반 idToken 검증 차이를 학습하고 적용
 - Kakao와 Apple의 provider 차이를 하나의 API로 추상화
@@ -105,7 +105,7 @@ Cron
 - `모든 산업`, 발행 요일 alias 등 운영 데이터 보정
 - 실제 발신자 이메일이 없으면 placeholder 생성
 
-면접 설명 포인트:
+설계 판단:
 
 - 어드민이 없는 상황에서 반복 운영 작업을 스크립트로 자동화
 - dev 검수 후 prod 반영하는 운영 절차 수립
@@ -142,7 +142,7 @@ SSH 기반 배포로 전환했습니다.
 - dev API는 Lightsail 앞단에 Nginx와 Let's Encrypt를 구성해 HTTPS를 적용하고,
   NestJS 프로세스는 내부 `3001` 포트로 분리
 
-면접 설명 포인트:
+설계 판단:
 
 - 수동 배포 절차를 CI/CD로 자동화해 반복 작업과 실수 가능성을 줄임
 - PR 검증과 merge 후 배포 트리거를 분리해 배포 안정성을 확보
@@ -162,20 +162,3 @@ SSH 기반 배포로 전환했습니다.
 
 이 항목들은 미완성이라기보다 현재 서비스 단계에서 의도적으로 범위를 나눈
 부분입니다. 추후 사용량과 운영 요구가 커지면 단계적으로 개선할 수 있습니다.
-
-## Resume Keywords
-
-- NestJS
-- Prisma
-- MySQL
-- Railway
-- JWT Authentication
-- Kakao / Apple OIDC
-- POP3S Mail Integration
-- Cron Scheduler
-- Mail Parsing
-- Data Import Automation
-- GitHub Actions CI/CD
-- EC2 / PM2 Deployment
-- Swagger API Documentation
-- Production Data Operations
