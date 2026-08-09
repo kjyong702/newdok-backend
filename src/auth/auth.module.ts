@@ -5,6 +5,7 @@ import { AuthService } from './auth.service';
 import { AuthController } from './auth.controller';
 import { PrismaService } from '../prisma.service';
 import { AppleAuthService } from './apple-auth.service';
+import { KakaoAuthService } from './kakao-auth.service';
 
 @Module({
   imports: [
@@ -17,7 +18,7 @@ import { AppleAuthService } from './apple-auth.service';
     }),
   ],
   controllers: [AuthController],
-  providers: [AuthService, AppleAuthService, PrismaService],
-  exports: [AppleAuthService],
+  providers: [AuthService, AppleAuthService, KakaoAuthService, PrismaService],
+  exports: [AppleAuthService, KakaoAuthService],
 })
 export class AuthModule {}

@@ -1,5 +1,5 @@
-import { ApiProperty } from '@nestjs/swagger';
-import { IsIn, IsNotEmpty, IsString } from 'class-validator';
+import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
+import { IsIn, IsNotEmpty, IsOptional, IsString } from 'class-validator';
 import { AUTH_PROVIDER } from '../constants/auth-provider';
 import { AUTH_PLATFORM } from '../constants/auth-platform';
 
@@ -31,4 +31,14 @@ export class SocialAuthDto {
   @IsString()
   @IsNotEmpty()
   idToken: string;
+
+  @ApiPropertyOptional({
+    example: 'c1a2b3d4e5...',
+    description:
+      'Apple 로그인 시 SDK에서 발급된 authorization code. 전달하면 서버가 refresh token으로 교환해 보관하고, 탈퇴 시 Apple 로그인 연결 해제(revoke)에 사용합니다.',
+  })
+  @IsOptional()
+  @IsString()
+  @IsNotEmpty()
+  authorizationCode?: string;
 }

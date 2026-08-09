@@ -2,13 +2,14 @@ import {
   BadRequestException,
   ConflictException,
   Injectable,
+  Logger,
   ServiceUnavailableException,
 } from '@nestjs/common';
 import { NewslettersService } from '../newsletters/newsletters.service';
 import { PrismaService } from '../prisma.service';
 import { JwtService } from '@nestjs/jwt';
 import { CreateUserDto } from './dtos/create-user.dto';
-import { Prisma } from '@prisma/client';
+import { AuthAccount, Prisma } from '@prisma/client';
 import * as bcrypt from 'bcrypt';
 import {
   hasUniqueTarget,
@@ -16,6 +17,7 @@ import {
 } from '../common/utils/prisma-error.util';
 import { MAILBOX_POOL_STATUS } from './constants/mailbox-pool-status';
 import { AppleAuthService } from '../auth/apple-auth.service';
+import { KakaoAuthService } from '../auth/kakao-auth.service';
 import { AUTH_PROVIDER } from '../auth/constants/auth-provider';
 
 class RetryableMailboxAllocationError extends Error {
@@ -27,12 +29,14 @@ class RetryableMailboxAllocationError extends Error {
 @Injectable()
 export class UsersService {
   private readonly SIGNUP_CREATE_RETRY_LIMIT = 3;
+  private readonly logger = new Logger(UsersService.name);
 
   constructor(
     private newslettersService: NewslettersService,
     private prisma: PrismaService,
     private jwtService: JwtService,
     private appleAuthService: AppleAuthService,
+    private kakaoAuthService: KakaoAuthService,
   ) {}
 
   async signup(createUserDto: CreateUserDto) {
@@ -484,19 +488,7 @@ export class UsersService {
       throw new BadRequestException('이미 탈퇴한 유저입니다');
     }
 
-    const appleAuthAccount = user.authAccounts.find(
-      (authAccount) => authAccount.provider === AUTH_PROVIDER.APPLE,
-    );
-
-    if (
-      appleAuthAccount?.providerRefreshTokenEncrypted &&
-      appleAuthAccount.providerClientId
-    ) {
-      await this.appleAuthService.revokeRefreshToken(
-        appleAuthAccount.providerRefreshTokenEncrypted,
-        appleAuthAccount.providerClientId,
-      );
-    }
+    const providerUnlinks = await this.unlinkAuthAccounts(user.authAccounts);
 
     const deletedAt = new Date();
     await this.prisma.$transaction(async (tx) => {
@@ -560,6 +552,68 @@ export class UsersService {
     return {
       message: '회원 탈퇴가 완료되었습니다.',
       deletedAt,
+      providerUnlinks,
     };
+  }
+
+  // 탈퇴는 provider 연결 해제 실패로 막지 않는다. 실패는 응답의 unlinked=false와 서버 로그로 확인한다.
+  private async unlinkAuthAccounts(authAccounts: AuthAccount[]) {
+    const results: Array<{
+      provider: string;
+      unlinked: boolean;
+      reason?: string;
+    }> = [];
+
+    for (const authAccount of authAccounts) {
+      results.push(await this.unlinkAuthAccount(authAccount));
+    }
+
+    return results;
+  }
+
+  private async unlinkAuthAccount(authAccount: AuthAccount) {
+    try {
+      if (authAccount.provider === AUTH_PROVIDER.KAKAO) {
+        await this.kakaoAuthService.unlinkUser(authAccount.providerUserId);
+
+        return { provider: authAccount.provider, unlinked: true };
+      }
+
+      if (authAccount.provider === AUTH_PROVIDER.APPLE) {
+        if (
+          !authAccount.providerRefreshTokenEncrypted ||
+          !authAccount.providerClientId
+        ) {
+          return {
+            provider: authAccount.provider,
+            unlinked: false,
+            reason:
+              '저장된 Apple refresh token이 없습니다. 새 앱 버전으로 로그인(authorizationCode 전달) 후 다시 탈퇴하면 연결 해제됩니다.',
+          };
+        }
+
+        await this.appleAuthService.revokeRefreshToken(
+          authAccount.providerRefreshTokenEncrypted,
+          authAccount.providerClientId,
+        );
+
+        return { provider: authAccount.provider, unlinked: true };
+      }
+
+      return {
+        provider: authAccount.provider,
+        unlinked: false,
+        reason: '연결 해제를 지원하지 않는 provider입니다.',
+      };
+    } catch (error) {
+      const reason =
+        error instanceof Error ? error.message : '알 수 없는 오류입니다.';
+
+      this.logger.warn(
+        `${authAccount.provider} 연결 해제 실패 (userId=${authAccount.userId}): ${reason}`,
+      );
+
+      return { provider: authAccount.provider, unlinked: false, reason };
+    }
   }
 }

@@ -6,11 +6,12 @@ import {
   UnauthorizedException,
 } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
-import { createDecipheriv } from 'crypto';
+import { createCipheriv, createDecipheriv, randomBytes } from 'crypto';
 import * as fs from 'fs';
 import * as path from 'path';
 import {
   createRemoteJWKSet,
+  decodeJwt,
   importPKCS8,
   jwtVerify,
   KeyLike,
@@ -21,6 +22,12 @@ import { AUTH_PLATFORM } from './constants/auth-platform';
 type AppleIdentity = {
   providerUserId: string;
   email: string | null;
+};
+
+type AppleRevokeCredential = {
+  providerUserId: string | null;
+  providerClientId: string;
+  providerRefreshTokenEncrypted: string;
 };
 
 const APPLE_ISSUER = 'https://appleid.apple.com';
@@ -44,6 +51,52 @@ export class AppleAuthService {
     return {
       providerUserId: identity.providerUserId,
       email: identity.email,
+    };
+  }
+
+  async exchangeAuthorizationCode(
+    authorizationCode: string,
+    platform: string,
+  ): Promise<AppleRevokeCredential> {
+    const clientId = this.getClientId(platform);
+    const clientSecret = await this.createClientSecret(clientId);
+    const response = await fetch('https://appleid.apple.com/auth/token', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/x-www-form-urlencoded;charset=utf-8',
+      },
+      body: new URLSearchParams({
+        client_id: clientId,
+        client_secret: clientSecret,
+        code: authorizationCode,
+        grant_type: 'authorization_code',
+      }),
+    });
+
+    if (!response.ok) {
+      const errorText = await response.text();
+      throw new UnauthorizedException(
+        `Apple authorization code 교환에 실패했습니다. ${errorText}`,
+      );
+    }
+
+    const tokens = (await response.json()) as {
+      refresh_token?: string;
+      id_token?: string;
+    };
+
+    if (!tokens.refresh_token) {
+      throw new UnauthorizedException(
+        'Apple 토큰 응답에 refresh token이 없습니다.',
+      );
+    }
+
+    return {
+      providerUserId: this.extractSubClaim(tokens.id_token),
+      providerClientId: clientId,
+      providerRefreshTokenEncrypted: this.encryptRefreshToken(
+        tokens.refresh_token,
+      ),
     };
   }
 
@@ -173,6 +226,33 @@ export class AppleAuthService {
     }
 
     return this.privateKeyPromise;
+  }
+
+  private extractSubClaim(idToken?: string) {
+    if (!idToken) {
+      return null;
+    }
+
+    try {
+      const payload = decodeJwt(idToken);
+
+      return typeof payload.sub === 'string' ? payload.sub : null;
+    } catch {
+      return null;
+    }
+  }
+
+  private encryptRefreshToken(refreshToken: string) {
+    const iv = randomBytes(12);
+    const cipher = createCipheriv('aes-256-gcm', this.getEncryptionKey(), iv);
+    const encrypted = Buffer.concat([
+      cipher.update(refreshToken, 'utf8'),
+      cipher.final(),
+    ]);
+
+    return [iv, cipher.getAuthTag(), encrypted]
+      .map((value) => value.toString('base64'))
+      .join('.');
   }
 
   private decryptRefreshToken(encryptedRefreshToken: string) {

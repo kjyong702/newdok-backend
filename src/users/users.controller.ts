@@ -418,7 +418,8 @@ export class UsersController {
 
   @ApiOperation({
     summary: '회원 탈퇴',
-    description: '사용자 계정을 탈퇴 처리합니다. (Soft Delete)',
+    description:
+      '사용자 계정을 탈퇴 처리합니다. 연관 데이터 삭제 및 소셜 로그인 연결 해제(카카오 unlink, 애플 revoke)를 함께 수행합니다. provider 연결 해제에 실패해도 탈퇴는 진행되며, 결과는 providerUnlinks로 반환됩니다. (User는 Soft Delete)',
   })
   @ApiBearerAuth()
   @UseGuards(AuthGuard)
@@ -428,6 +429,12 @@ export class UsersController {
       example: {
         message: '회원 탈퇴가 완료되었습니다.',
         deletedAt: '2024-12-19T10:30:00.000Z',
+        providerUnlinks: [
+          {
+            provider: 'KAKAO',
+            unlinked: true,
+          },
+        ],
       },
     },
   })

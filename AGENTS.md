@@ -66,7 +66,14 @@
 - 카카오는 카카오 디벨로퍼스에서 OpenID Connect를 활성화해야 합니다.
 - 카카오 `idToken` 검증의 `aud` 값은 `KAKAO_OIDC_AUDIENCE`를 우선 사용합니다.
 - Apple iOS `idToken` 검증의 `aud` 값은 `APPLE_CLIENT_ID`를 사용합니다.
-- Apple revoke/token exchange 풀 플로우는 현재 1차 연동 범위에서 제외합니다.
+- Apple 로그인 요청에 `authorizationCode`(선택)가 오면 서버가 refresh token으로
+  교환해 AES-256-GCM으로 암호화 저장하고, 탈퇴 시 Apple revoke에 사용합니다.
+  교환 실패는 로그인 자체를 막지 않습니다.
+- 탈퇴(`PATCH /users/withdraw`)는 provider 연결 해제를 함께 수행합니다.
+  - 카카오: Admin Key(`KAKAO_ADMIN_KEY`) + 저장된 `providerUserId`로 unlink.
+  - 애플: 저장된 refresh token으로 revoke. 없으면 revoke 없이 탈퇴만 진행.
+  - 연결 해제 실패는 탈퇴를 막지 않고, 응답의 `providerUnlinks`와 서버 로그로
+    확인합니다.
 - 로컬 로그인, 기존 회원가입, SMS 인증 API는 소셜 로그인 완전 전환 전까지
   임시 유지합니다.
 - 이메일은 소셜 계정의 고유 식별자로 사용하지 않습니다.
@@ -80,12 +87,12 @@
 
 - 앱 우선 소셜 로그인 전환.
 - 카카오/애플 OIDC `idToken` 기반 로그인/회원가입.
-- 앱 개발자 실제 연동 테스트 대기.
+- 소셜 탈퇴: provider 연결 해제(카카오 unlink, 애플 revoke) 포함 탈퇴 플로우.
+- 앱 개발자 실제 연동 테스트 대기(애플은 `authorizationCode` 파라미터 추가 예정).
 
 **보류**
 
 - 기존 로컬 회원가입/로그인/SMS 인증 제거.
-- Apple authorization code 기반 token exchange/revoke 풀 플로우.
 - 소셜 계정 연결 또는 계정 병합.
 - Web OAuth/OIDC callback flow.
 - 뉴스레터 데이터 운영 어드민.
@@ -232,8 +239,11 @@
   - `APPLE_CLIENT_ID`
   - `DATABASE_URL`
   - `JWT_SECRET_KEY`
-- Apple revoke/token exchange를 다시 도입할 때는 `APPLE_TEAM_ID`,
-  `APPLE_KEY_ID`, `APPLE_PRIVATE_KEY_BASE64`가 필요할 수 있습니다.
+- 소셜 탈퇴(연결 해제)에는 추가로 다음 값이 필요합니다.
+  - `KAKAO_ADMIN_KEY`: 카카오 unlink Admin Key
+  - `APPLE_TEAM_ID`, `APPLE_KEY_ID`: Apple client secret 서명용
+  - `APPLE_PRIVATE_KEY_BASE64` 또는 `APPLE_PRIVATE_KEY_PATH`: Apple `.p8` 키
+  - `PROVIDER_TOKEN_ENCRYPTION_KEY`: refresh token 암호화 키(32바이트 Base64)
 
 ## 검증 규칙
 
@@ -241,7 +251,7 @@
 - 인증/Auth 변경 시 관련 Jest 테스트를 실행합니다.
 
 ```text
-npx jest src/auth/auth.controller.spec.ts src/auth/apple-auth.service.spec.ts --runInBand
+npx jest src/auth/auth.controller.spec.ts src/auth/apple-auth.service.spec.ts src/auth/kakao-auth.service.spec.ts --runInBand
 ```
 
 - Prisma schema 변경 시 `npx prisma generate`를 실행합니다.

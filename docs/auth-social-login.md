@@ -36,9 +36,17 @@ Request:
 | `provider` | `KAKAO` 또는 `APPLE` |
 | `platform` | `IOS`, `ANDROID`, `WEB` |
 | `idToken` | Provider SDK에서 발급받은 OIDC identity token |
+| `authorizationCode` | (선택) Apple 로그인 시 SDK에서 발급받은 authorization code |
 
 현재 Apple 로그인은 `IOS`, `WEB`만 지원합니다. `ANDROID`로 Apple 로그인을 요청하면
 400 응답을 반환합니다.
+
+Apple 로그인에서 `authorizationCode`를 함께 보내면 서버가 Apple 토큰 엔드포인트와
+교환해 refresh token을 암호화 저장합니다. 이 값은 탈퇴 시 Apple 로그인 연결
+해제(revoke)에 사용됩니다. authorization code는 발급 후 5분 내 1회만 사용할 수
+있으므로 로그인 요청 시점에 바로 전달해야 하며, 기존 가입자의 로그인에서도 보내면
+저장값이 갱신됩니다. 교환에 실패해도 로그인/회원가입 자체는 실패하지 않습니다
+(서버 로그로 확인).
 
 ## Registered User Response
 
@@ -147,16 +155,59 @@ Apple 로그인은 Apple identity token을 검증합니다.
 - iOS audience: `APPLE_CLIENT_ID`
 - Web audience: `APPLE_WEB_CLIENT_ID`
 
-현재 로그인/회원가입 플로우는 Apple `idToken` 검증까지만 필수로 사용합니다.
-Apple authorization code 기반 token exchange와 revoke 풀 플로우는 추후 확장
-대상입니다.
+로그인/회원가입 필수 검증은 Apple `idToken`입니다. `authorizationCode`가 함께
+전달되면 token exchange를 수행해 refresh token을 확보하고, 탈퇴 시 revoke에
+사용합니다.
 
-풀 플로우를 도입할 경우 다음 값이 추가로 필요합니다.
+token exchange/revoke에는 다음 값이 추가로 필요합니다.
 
 - `APPLE_TEAM_ID`
 - `APPLE_KEY_ID`
-- `APPLE_PRIVATE_KEY_BASE64`
-- `PROVIDER_TOKEN_ENCRYPTION_KEY`
+- `APPLE_PRIVATE_KEY_BASE64` 또는 `APPLE_PRIVATE_KEY_PATH`
+- `PROVIDER_TOKEN_ENCRYPTION_KEY` (32바이트 Base64, refresh token 암호화 키)
+
+## Withdrawal (탈퇴)
+
+```http
+PATCH /users/withdraw
+Authorization: Bearer {accessToken}
+```
+
+탈퇴는 다음을 함께 수행합니다.
+
+1. Provider 연결 해제
+   - Kakao: Admin Key(`KAKAO_ADMIN_KEY`)와 저장된 `providerUserId`(회원번호)로
+     `POST https://kapi.kakao.com/v1/user/unlink` 호출. 앱에서 보낼 추가
+     파라미터는 없습니다.
+   - Apple: 저장된 refresh token을 복호화해
+     `POST https://appleid.apple.com/auth/revoke` 호출. 저장된 refresh token이
+     없으면(구버전 앱에서 `authorizationCode` 없이 가입한 경우) revoke 없이
+     탈퇴만 진행됩니다.
+2. 연관 데이터 삭제(bookmark, 구독, 관심사, article, authAccount, userConsent)
+3. mailbox `RETIRED` 처리 (재사용 금지)
+4. User `deletedAt` 기록 (soft delete)
+
+Provider 연결 해제 실패는 탈퇴를 막지 않습니다. 결과는 응답의 `providerUnlinks`
+배열과 서버 warn 로그로 확인합니다.
+
+Response:
+
+```json
+{
+  "message": "회원 탈퇴가 완료되었습니다.",
+  "deletedAt": "2026-08-09T00:00:00.000Z",
+  "providerUnlinks": [
+    {
+      "provider": "KAKAO",
+      "unlinked": true
+    }
+  ]
+}
+```
+
+`unlinked: false`인 경우 `reason` 필드에 사유가 포함됩니다. 탈퇴 후 같은 소셜
+계정으로 다시 로그인하면 신규 회원 플로우(`isRegistered: false`)로 진입하며,
+재가입 시 mailbox pool에서 새 구독 이메일을 소모합니다.
 
 ## JWKS Caching
 
@@ -185,5 +236,4 @@ Kakao와 Apple 공개키는 `jose`의 `createRemoteJWKSet`으로 조회합니다
 - 로컬 로그인/SMS 인증 제거 시점
 - Kakao와 Apple 계정 연결 정책
 - 이미 생성된 독립 계정 병합 정책
-- Apple authorization code 저장 및 revoke 처리
 - Web OAuth callback 기반 로그인 지원

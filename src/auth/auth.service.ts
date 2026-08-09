@@ -31,6 +31,8 @@ type SocialAuthProfile = {
   providerUserId: string;
   email: string | null;
   nickname: string | null;
+  providerClientId: string | null;
+  providerRefreshTokenEncrypted: string | null;
 };
 
 type SignupTokenPayload = Omit<SocialAuthProfile, 'nickname'> & {
@@ -119,6 +121,19 @@ export class AuthService {
         throw new UnauthorizedException('탈퇴한 계정입니다.');
       }
 
+      if (profile.providerClientId && profile.providerRefreshTokenEncrypted) {
+        await this.prisma.authAccount.update({
+          where: {
+            id: authAccount.id,
+          },
+          data: {
+            providerClientId: profile.providerClientId,
+            providerRefreshTokenEncrypted:
+              profile.providerRefreshTokenEncrypted,
+          },
+        });
+      }
+
       const accessToken = await this.issueAccessToken(authAccount.user.id);
 
       return {
@@ -135,6 +150,8 @@ export class AuthService {
         provider: profile.provider,
         providerUserId: profile.providerUserId,
         email: profile.email,
+        providerClientId: profile.providerClientId,
+        providerRefreshTokenEncrypted: profile.providerRefreshTokenEncrypted,
       } satisfies SignupTokenPayload,
       {
         expiresIn: this.SIGNUP_TOKEN_EXPIRES_IN,
@@ -276,6 +293,9 @@ export class AuthService {
                 provider: signupTokenPayload.provider,
                 providerUserId: signupTokenPayload.providerUserId,
                 email: signupTokenPayload.email,
+                providerClientId: signupTokenPayload.providerClientId ?? null,
+                providerRefreshTokenEncrypted:
+                  signupTokenPayload.providerRefreshTokenEncrypted ?? null,
                 userId: createdUser.id,
               },
             });
@@ -350,6 +370,8 @@ export class AuthService {
       providerUserId: kakaoUser.providerUserId,
       email: kakaoUser.email,
       nickname: kakaoUser.nickname,
+      providerClientId: null,
+      providerRefreshTokenEncrypted: null,
     };
   }
 
@@ -364,13 +386,59 @@ export class AuthService {
       body.idToken,
       body.platform,
     );
+    const revokeCredential = await this.exchangeAppleAuthorizationCode(
+      body,
+      appleUser.providerUserId,
+    );
 
     return {
       provider: AUTH_PROVIDER.APPLE,
       providerUserId: appleUser.providerUserId,
       email: appleUser.email,
       nickname: null,
+      providerClientId: revokeCredential?.providerClientId ?? null,
+      providerRefreshTokenEncrypted:
+        revokeCredential?.providerRefreshTokenEncrypted ?? null,
     };
+  }
+
+  // 탈퇴 시 Apple revoke에 사용할 refresh token 확보 목적. 실패해도 로그인 자체는 막지 않는다.
+  private async exchangeAppleAuthorizationCode(
+    body: SocialAuthDto,
+    verifiedProviderUserId: string,
+  ) {
+    if (!body.authorizationCode) {
+      return null;
+    }
+
+    try {
+      const revokeCredential =
+        await this.appleAuthService.exchangeAuthorizationCode(
+          body.authorizationCode,
+          body.platform,
+        );
+
+      if (
+        revokeCredential.providerUserId &&
+        revokeCredential.providerUserId !== verifiedProviderUserId
+      ) {
+        this.logger.warn(
+          'Apple authorization code의 사용자와 idToken의 사용자가 일치하지 않아 refresh token을 저장하지 않습니다.',
+        );
+
+        return null;
+      }
+
+      return revokeCredential;
+    } catch (error) {
+      this.logger.warn(
+        `Apple authorization code 교환 실패: ${
+          error instanceof Error ? error.message : String(error)
+        }`,
+      );
+
+      return null;
+    }
   }
 
   private async issueAccessToken(userId: number) {
