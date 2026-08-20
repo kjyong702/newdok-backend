@@ -31,7 +31,7 @@ export class SearchController {
           id: 1,
           brandName: 'NEWNEEK',
           firstDescription: '세상 돌아가는 소식, 뉴닉으로!',
-          imageUrl: 'https://newdok.shop/public/NEWNEEK.png',
+          imageUrl: 'https://api.newdok.store/public/NEWNEEK.png',
         },
       ],
     },
@@ -67,7 +67,7 @@ export class SearchController {
             newsletter: {
               id: 1,
               brandName: 'NEWNEEK',
-              imageUrl: 'https://newdok.shop/public/NEWNEEK.png',
+              imageUrl: 'https://api.newdok.store/public/NEWNEEK.png',
             },
             matchType: 'title',
           },

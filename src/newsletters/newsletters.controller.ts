@@ -36,13 +36,13 @@ export class NewslettersController {
         {
           id: 1,
           brandName: 'NEWNEEK',
-          imageUrl: 'https://newdok.shop/public/NEWNEEK.png',
+          imageUrl: 'https://api.newdok.store/public/NEWNEEK.png',
           publicationCycle: '매주 평일 아침',
         },
         {
           id: 99,
           brandName: '돈키레터',
-          imageUrl: 'https://newdok.shop/public/돈키레터.png',
+          imageUrl: 'https://api.newdok.store/public/돈키레터.png',
           publicationCycle: '매주 평일 오전 7시',
         },
       ],
@@ -63,13 +63,13 @@ export class NewslettersController {
         {
           id: 1,
           brandName: 'NEWNEEK',
-          imageUrl: 'https://newdok.shop/public/NEWNEEK.png',
+          imageUrl: 'https://api.newdok.store/public/NEWNEEK.png',
           publicationCycle: '매주 평일 아침',
         },
         {
           id: 99,
           brandName: '돈키레터',
-          imageUrl: 'https://newdok.shop/public/돈키레터.png',
+          imageUrl: 'https://api.newdok.store/public/돈키레터.png',
           publicationCycle: '매주 평일 오전 7시',
         },
       ],
@@ -101,7 +101,7 @@ export class NewslettersController {
           secondDescription: '가장 쉽고 똑똑한 비즈니스 뉴스 읽기',
           publicationCycle: '매주 평일 오전 6시',
           subscribeUrl: 'https://page.stibee.com/subscriptions/81111',
-          imageUrl: 'https://newdok.shop/public/Daily Byte.png',
+          imageUrl: 'https://api.newdok.store/public/Daily Byte.png',
           createdAt: '2023-07-15T07:30:42.996Z',
           updatedAt: '2023-09-27T07:13:17.112Z',
           industries: [
@@ -144,7 +144,7 @@ export class NewslettersController {
           secondDescription: '당신만을 위한 외식업 세계의 이야기',
           publicationCycle: '매주 금요일',
           subscribeUrl: 'https://foodworld-letter.stibee.com/subscribe/',
-          imageUrl: 'https://newdok.shop/public/외계레터.png',
+          imageUrl: 'https://api.newdok.store/public/외계레터.png',
           createdAt: '2023-07-15T07:30:42.996Z',
           updatedAt: '2023-09-27T07:13:17.112Z',
           industries: [
@@ -197,7 +197,7 @@ export class NewslettersController {
             secondDescription: '가장 쉽고 똑똑한 비즈니스 뉴스 읽기',
             publicationCycle: '매주 평일 오전 6시',
             subscribeUrl: 'https://page.stibee.com/subscriptions/81111',
-            imageUrl: 'https://newdok.shop/public/Daily Byte.png',
+            imageUrl: 'https://api.newdok.store/public/Daily Byte.png',
             createdAt: '2023-07-15T07:30:42.996Z',
             updatedAt: '2023-09-27T07:13:17.112Z',
             industries: [
@@ -223,7 +223,7 @@ export class NewslettersController {
             secondDescription: '당신만을 위한 외식업 세계의 이야기',
             publicationCycle: '매주 금요일',
             subscribeUrl: 'https://foodworld-letter.stibee.com/subscribe/',
-            imageUrl: 'https://newdok.shop/public/외계레터.png',
+            imageUrl: 'https://api.newdok.store/public/외계레터.png',
             createdAt: '2023-07-15T07:30:42.996Z',
             updatedAt: '2023-09-27T07:13:17.112Z',
             industries: [
@@ -310,7 +310,7 @@ export class NewslettersController {
         {
           brandId: 2,
           brandName: 'Daily Byte',
-          imageUrl: 'https://newdok.shop/public/Daily Byte.png',
+          imageUrl: 'https://api.newdok.store/public/Daily Byte.png',
           interests: [
             {
               id: 1,
@@ -394,7 +394,7 @@ export class NewslettersController {
         ],
         publicationCycle: '매주 평일 아침',
         subscribeUrl: 'https://newneek.co/',
-        imageUrl: 'https://newdok.shop/public/NEWNEEK.png',
+        imageUrl: 'https://api.newdok.store/public/NEWNEEK.png',
         brandArticleList: [
           {
             id: 42902,
