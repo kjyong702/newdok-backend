@@ -100,12 +100,24 @@ AVAILABLE -> ASSIGNED -> RETIRED
 ### Newsletter
 
 뉴스레터 브랜드 데이터입니다. 산업군, 관심사, 발행 요일과 다대다 관계를 가지며,
-POP3 수신 시 발신자 이메일(`brandEmail`, `secondEmail`, `thirdEmail`)로 매칭됩니다.
+POP3 수신 시 `NewsletterSenderEmail` 테이블의 발신자 이메일로 매칭됩니다.
+
+### NewsletterSenderEmail
+
+뉴스레터별 발신자 이메일 명부입니다. 뉴스레터당 개수 제한이 없으며(`email`은
+전역 unique), POP3 발신자 매칭의 단일 기준입니다. 과거 Newsletter의 3컬럼
+(`brandEmail/secondEmail/thirdEmail`)을 대체했습니다.
 
 ### Article
 
 POP3로 수신한 이메일을 파싱해 저장한 아티클입니다. 사용자별 구독 이메일로
-수신되므로 `userId`와 `newsletterId`를 함께 가집니다.
+수신되므로 `userId`와 `newsletterId`를 함께 가지며, 원본 메일의 POP3 UIDL을
+`uidl`로 기록해 수집 진행/중복 방지의 기준으로 사용합니다.
+
+### UnmatchedMail
+
+발신자 미등록으로 수집이 보류된 메일의 대기소(주차장)입니다. 발신자가
+등록되면 다음 수집 사이클에서 자동 회수되어 Article로 저장됩니다.
 
 ### UserConsent
 

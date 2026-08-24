@@ -67,12 +67,15 @@ ArticlesService.POP3()
   -> load users where deletedAt is null
   -> process users in batches
   -> connect to mail.newdok.store:995 with TLS
-  -> UIDL list
-  -> retrieve new mail range
-  -> parse email
-  -> match newsletter by sender email
-  -> create Article
-  -> update subscription state
+  -> UIDL list ([msgNumber, uidl] pairs)
+  -> backfill legacy article uidls (one-time)
+  -> for each mail not in (Article.uidl ∪ UnmatchedMail.uidl):
+       -> RETR + parse email
+       -> match newsletter via NewsletterSenderEmail
+       -> matched: create Article (with uidl) + update subscription state
+       -> unmatched: park into UnmatchedMail (PENDING)
+  -> recover parked mails whose sender is now registered
+  -> log cycle summary (saved / recovered / pending senders)
   -> QUIT POP3 connection
 ```
 
@@ -81,14 +84,73 @@ ArticlesService.POP3()
 수신 메일은 발신자 이메일로 Newsletter를 찾습니다.
 
 ```text
-Newsletter.brandEmail
-Newsletter.secondEmail
-Newsletter.thirdEmail
+NewsletterSenderEmail.email -> Newsletter
 ```
 
-새로운 뉴스레터 브랜드를 추가했지만 실제 발신자 이메일이 비어 있거나 틀리면 POP3
-수집 중 `알 수 없는 뉴스레터 발신자` 오류가 발생할 수 있습니다. 운영 중에는
-DBeaver 등으로 발신자 이메일을 보정합니다.
+발신자 이메일은 `NewsletterSenderEmail` 테이블(뉴스레터당 개수 제한 없음)에서
+단건 조회로 매칭합니다. 과거의 `brandEmail/secondEmail/thirdEmail` 3컬럼 구조는
+전환기 동안 컬럼만 남아 있고 매칭에는 사용되지 않습니다.
+
+## UIDL Cursor & Unmatched Parking
+
+수집 진행 상태는 아티클 개수가 아니라 메일의 고유 ID(UIDL)로 판단합니다.
+
+```text
+이번에 처리할 메일 = 메일함 전체 UIDL
+                  - (Article.uidl ∪ UnmatchedMail.uidl)
+```
+
+- 저장에 성공한 메일은 `Article.uidl`에, 발신자 미등록으로 보류된 메일은
+  `UnmatchedMail`(주차장, status=PENDING)에 신원이 기록됩니다.
+- 미등록 발신자를 만나도 수집은 중단되지 않고 해당 메일만 주차 후 계속
+  진행됩니다. (과거의 "한 메일에서 영구 정지" 문제 해결)
+- 매 사이클 주차장을 재점검해, 그 사이 등록된 발신자의 메일을 자동 회수합니다.
+- 메일함에서 원본이 사라져 회수할 수 없게 된 주차 메일은 `UNRECOVERABLE`로
+  표시됩니다.
+- `(userId, uidl)` unique 제약으로 중복 저장이 DB 수준에서 차단됩니다.
+- 레거시 아티클(uidl 없음)은 "id 오름차순 i번째 아티클 = 메일함 i번째 메일"
+  불변식으로 서비스가 1회 자동 백필합니다. 불변식이 깨진 유저는 중복 방지를
+  위해 수집을 건너뛰고 에러 로그를 남깁니다.
+
+## Unmatched Sender Operations
+
+미등록 발신자 운영 절차:
+
+1. 확인: `pm2 logs`의 사이클 요약(`미등록 발신자 대기 N종: ...`) 또는
+   `GET /articles/unmatched-senders` (master 전용, PENDING/UNRECOVERABLE 모두 반환)
+2. 등록: DBeaver에서 `NewsletterSenderEmail`에 (newsletterId, email) row 추가
+   또는 `POST /newsletters/:id/sender-emails` (master 전용)
+3. 회수: 다음 수집 사이클(1분 내)에서 주차 메일이 자동으로 아티클로 저장됨
+
+`UNRECOVERABLE` 메일을 재시도하려면 DBeaver에서 해당 `UnmatchedMail` row를
+삭제합니다. 다음 사이클에 그 uidl이 미처리로 간주되어 재수집을 시도합니다.
+(원본이 메일함에서 사라진 경우는 삭제해도 회수되지 않습니다.)
+
+## Rollback Policy
+
+신코드(UIDL 기반)가 1사이클이라도 돈 뒤에는 **구코드(count 기반)로 롤백하지
+않습니다.** 주차로 생긴 '구멍' 때문에 구코드의 count 커서가 이미 저장된 메일을
+다시 가리켜 중복 아티클이 생기고, 이후 신코드를 재배포하면 백필 위치 검증이
+실패해 해당 유저 수집이 차단됩니다. 문제가 생기면 롤백 대신:
+
+1. 수집만 급히 멈춰야 하면 `pm2 stop`으로 프로세스를 세우고
+2. 원인을 수정해 앞으로 나아갑니다(fix-forward)
+
+## Sender Registry Seed (3컬럼 → 명부 이관)
+
+새 환경(또는 prod 최초 적용) 시 발신자 명부는 다음으로 적재합니다.
+
+```bash
+npm run seed:sender-emails:prod -- --apply \
+  --extra "로하우=estherkong153-gmail.com@send.stibee.com" \
+  --extra "로하우=lawyersjg-gmail.com@send.stibee.com"
+```
+
+- 대상 DB 자신의 3컬럼에서 placeholder(`@newdok.internal`) 제외 후 이관하므로
+  dev/prod 간 newsletterId 불일치 문제가 없습니다.
+- `--apply` 없이 실행하면 dry-run, 재실행해도 안전(멱등)합니다.
+- `--extra`는 3칸 제한으로 등록하지 못했던 발신자를 함께 넣을 때 사용합니다.
+- 순서: `db-push` (스키마) → seed (명부) → 신코드 배포.
 
 ## Subscription State Update
 
@@ -128,32 +190,33 @@ DB에는 User row로 유지합니다.
 - POP3 수집 대상에는 포함될 수 있습니다.
 - 해당 계정의 mailbox는 재사용하지 않습니다.
 
-## Current Implementation Notes
+## Failure Handling
 
-현재 POP3 로직은 메일 서버의 UIDL 개수와 DB에 저장된 Article 개수를 비교해 새로
-가져올 메일 범위를 계산합니다.
-
-```text
-for i = savedArticleCount + 1 to uidlList.length
-```
-
-이 방식은 메일 서버에서 과거 메일이 삭제되지 않고 순서가 유지된다는 가정이
-있습니다. 추후 메일 서버 정책이 바뀌거나 일부 메일이 삭제될 수 있다면 UIDL을 DB에
-별도로 저장해 중복/누락을 더 엄밀하게 제어하는 구조를 고려할 수 있습니다.
+- RETR 실패(타임아웃 포함) 후에는 같은 연결의 명령-응답 짝이 어긋날 수 있어
+  해당 유저의 이번 사이클 세션을 즉시 종료합니다(오저장 방지). 다음 사이클에
+  같은 지점부터 재시도됩니다.
+- 같은 메일이 3회 연속 실패하면 `UNRECOVERABLE`(발신자 `(수신 실패)`)로 주차해
+  더 이상 사이클을 막지 않습니다.
+- 과거의 count 기반 커서(`for i = savedArticleCount + 1 ...`)는 폐지되었습니다.
+  메일 삭제로 순서가 밀려도 UIDL 기준이므로 안전합니다.
 
 ## Log Interpretation
 
 ```text
-[POP3] 유저 email 메일 N개 / 저장된 아티클 M개
+[POP3] 유저 email 메일 N개 / 처리됨 M개
 ```
 
-이 로그는 UIDL 목록 개수와 DB 저장 Article 개수를 비교한 것입니다. 실제 신규 저장은
-다음 로그가 함께 있어야 판단할 수 있습니다.
+N은 메일함 전체 UIDL 개수, M은 이미 신원이 기록된 메일 수
+(`Article.uidl ∪ UnmatchedMail.uidl`)입니다. M에는 주차된 메일이 포함되므로
+"저장된 아티클 수"와 다를 수 있습니다.
+
+사이클 결과는 요약 로그로 판단합니다.
 
 ```text
-메일 수신 시작
-아티클 저장 완료
+[POP3] 유저 email 신규 저장 X건 / 회수 Y건 / 신규 주차 Z건
+[POP3] 유저 email 미등록 발신자 대기 N종: sender(n통, "제목"), ...
 ```
 
-해당 로그가 없다면 POP3 접속과 UIDL 조회만 수행되고 신규 Article 저장은 없었던
-것으로 봅니다.
+`신규 저장 0건 / 회수 0건 / 신규 주차 0건`이면 이번 사이클에 새 메일이 없었던
+것입니다. 미등록 발신자 요약 줄이 보이면 해당 발신자를 등록해 주세요(다음
+사이클에 자동 회수).

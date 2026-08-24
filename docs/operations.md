@@ -290,8 +290,10 @@ npm run import:newsletters:prod -- --file "데이터분류.csv" --added-at "2026
 - CSV 파일은 커밋하지 않습니다.
 - dev에서 dry-run 결과를 먼저 확인합니다.
 - 앱에서 노출, 필터, 이미지, 구독 URL을 확인합니다.
-- 실제 brandEmail을 모르면 placeholder가 들어가며, 이후 수신 메일 기준으로 보정합니다.
-- `doubleCheck`, `temporaryMiss`, 이미지 URL은 DBeaver에서 보정할 수 있습니다.
+- 실제 발신자 이메일을 모르면 `NewsletterSenderEmail` row를 만들지 않으며, 이후
+  수신 메일의 From 주소를 확인해 row를 추가합니다(placeholder 정책 폐지).
+- 발신자 이메일 추가, `doubleCheck`, `temporaryMiss`, 이미지 URL은 DBeaver 또는
+  운영 API(`POST /newsletters/:id/sender-emails`)로 보정할 수 있습니다.
 
 ## Manual Data Cleanup
 

@@ -115,12 +115,18 @@
 ## POP3 / 아티클 수집 정책
 
 - POP3는 사용자 구독 이메일 계정 기준으로 메일을 조회합니다.
+- 수집 진행/중복 방지는 메일의 UIDL 기준입니다(`Article.uidl`). 발신자 매칭은
+  `NewsletterSenderEmail` 테이블(뉴스레터당 개수 무제한)로만 수행합니다.
+- 미등록 발신자 메일은 에러로 중단하지 않고 `UnmatchedMail`(주차장)에 보류하며,
+  발신자 등록 시 다음 사이클에서 자동 회수됩니다.
+- 미등록 발신자 확인은 `GET /articles/unmatched-senders`, 등록은 DBeaver 또는
+  `POST /newsletters/:id/sender-emails`(둘 다 master 전용)를 사용합니다.
 - 삭제된 사용자(`deletedAt` 존재)는 POP3 수집 대상에서 제외해야 합니다.
 - master 또는 시스템 성격의 계정은 전체 뉴스레터 아티클 미리보기/지난 아티클
   수집을 위해 유지될 수 있습니다.
-- POP3 로그의 `메일 N개 / 저장된 아티클 M개`는 UIDL 전체 개수와 DB 저장 개수
-  비교입니다. `메일 수신 시작`, `아티클 저장 완료`가 없으면 신규 저장이 없던
-  것으로 봅니다.
+- POP3 로그의 `메일 N개 / 처리됨 M개`는 UIDL 전체 개수와 신원 기록된 메일 수
+  (`Article.uidl ∪ UnmatchedMail.uidl`) 비교입니다. 사이클 결과는
+  `신규 저장 X건 / 회수 Y건 / 신규 주차 Z건` 요약 로그로 판단합니다.
 
 ## 뉴스레터 데이터 운영 정책
 
@@ -129,8 +135,8 @@
 - CSV export 파일은 커밋하지 않습니다.
 - dev DB에서 dry-run과 apply, 앱 검수를 먼저 수행합니다.
 - dev 검수 후 같은 CSV를 prod DB에 적용합니다.
-- 필요한 경우 DBeaver에서 `brandEmail`, `doubleCheck`, 이미지 URL 등을 보정할 수
-  있습니다.
+- 필요한 경우 DBeaver에서 `NewsletterSenderEmail` row 추가, `doubleCheck`,
+  이미지 URL 등을 보정할 수 있습니다.
 
 기본 절차:
 
@@ -254,6 +260,12 @@
 npx jest src/auth/auth.controller.spec.ts src/auth/apple-auth.service.spec.ts src/auth/kakao-auth.service.spec.ts --runInBand
 ```
 
+- POP3 수집기(articles.service) 변경 시 다음 테스트를 실행합니다.
+
+```text
+npx jest src/articles/articles.service.spec.ts --runInBand
+```
+
 - Prisma schema 변경 시 `npx prisma generate`를 실행합니다.
 - Swagger 문서 변경은 빌드 통과와 실제 Swagger UI 표시 여부를 함께 확인합니다.
 
@@ -282,8 +294,10 @@ npx jest src/auth/auth.controller.spec.ts src/auth/apple-auth.service.spec.ts sr
 
 - 로컬에서 `npm run start`를 실행하면 스케줄러가 같이 뜰 수 있습니다.
 - POP3 실행이 우려되는 작업에서는 서버 기동을 최소화하고 로그를 확인합니다.
-- `메일 N개 / 저장된 아티클 M개`만 있고 `메일 수신 시작`, `아티클 저장 완료`가
-  없으면 신규 저장은 없던 것으로 봅니다.
+- 사이클 결과는 `신규 저장 X건 / 회수 Y건 / 신규 주차 Z건` 요약 로그로
+  판단합니다. `미등록 발신자 대기` 줄이 보이면 발신자 등록이 필요한 상태입니다.
+- 구코드(count 기반)와 신코드(UIDL 기반)를 같은 메일함/DB에 동시에 구동하지
+  않습니다(중복 저장 위험). 배포로 원자적으로 교체합니다.
 
 ### 운영 데이터 파일
 
