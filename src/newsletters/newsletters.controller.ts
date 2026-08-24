@@ -2,15 +2,18 @@ import {
   Controller,
   Get,
   Patch,
+  Post,
   Param,
   Query,
   Body,
   Req,
   UseGuards,
+  ForbiddenException,
 } from '@nestjs/common';
 import { NewslettersService } from './newsletters.service';
 import { AuthGuard } from '../guards/auth.guard';
 import { SUBSCRIPTION_STATUS } from './constants/subscription-status';
+import { ADMIN_USER_ID } from '../common/constants/admin';
 import {
   ApiTags,
   ApiOperation,
@@ -19,12 +22,57 @@ import {
   ApiBody,
   ApiBearerAuth,
   ApiOkResponse,
+  ApiCreatedResponse,
 } from '@nestjs/swagger';
 
 @ApiTags('Newsletter')
 @Controller('newsletters')
 export class NewslettersController {
   constructor(private newslettersService: NewslettersService) {}
+
+  @ApiOperation({
+    summary: '[운영] 뉴스레터 발신자 이메일 등록',
+    description:
+      '미등록 발신자를 뉴스레터에 등록합니다. 등록 즉시 다음 POP3 사이클부터 매칭되며, 주차(UnmatchedMail)된 메일은 자동 회수됩니다. master 계정 전용.',
+  })
+  @ApiParam({ name: 'id', description: '뉴스레터 id', example: 23 })
+  @ApiBody({
+    schema: {
+      properties: {
+        email: {
+          type: 'string',
+          example: 'letter@inlevel9.com',
+          description: '수신 메일의 From 주소 그대로 등록',
+        },
+      },
+    },
+  })
+  @ApiBearerAuth()
+  @UseGuards(AuthGuard)
+  @ApiCreatedResponse({
+    description: '발신자 이메일 등록 완료',
+    schema: {
+      example: {
+        id: 412,
+        newsletterId: 23,
+        brandName: '레벨나인',
+        email: 'letter@inlevel9.com',
+        message:
+          '발신자 이메일이 등록되었습니다. 다음 수집 사이클부터 매칭되며, 주차된 메일은 자동 회수됩니다.',
+      },
+    },
+  })
+  @Post('/:id/sender-emails')
+  async addSenderEmail(
+    @Param('id') id: string,
+    @Body('email') email: string,
+    @Req() req: any,
+  ) {
+    if (req.user.id !== ADMIN_USER_ID) {
+      throw new ForbiddenException('관리자만 사용할 수 있는 기능입니다.');
+    }
+    return this.newslettersService.addSenderEmail(parseInt(id), email);
+  }
 
   @ApiOperation({ summary: '구독 중인 뉴스레터 조회' })
   @ApiBearerAuth()

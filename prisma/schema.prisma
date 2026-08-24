@@ -29,6 +29,7 @@ model User {
   newsletters       NewslettersOnUsers[]
   articles          Article[]
   bookmarks         Bookmark[]
+  unmatchedMails    UnmatchedMail[]
 }
 
 model AuthAccount {
@@ -84,9 +85,10 @@ model Newsletter {
   subscribeUrl      String?
   previewUrl        String?
   imageUrl          String?
-  brandEmail        String               @unique
-  secondEmail       String               @unique
-  thirdEmail        String               @unique
+  // 전환기 유지 컬럼: 발신자 매칭은 NewsletterSenderEmail로 이전됨. 안정화 후 제거 예정.
+  brandEmail        String?              @unique
+  secondEmail       String?              @unique
+  thirdEmail        String?              @unique
   doubleCheck       Boolean              @default(false)
   temporaryMiss     Boolean              @default(false)
   createdAt         DateTime             @default(now())
@@ -96,6 +98,35 @@ model Newsletter {
   industries        Industry[]
   interests         Interest[]
   days              Day[]
+  senderEmails      NewsletterSenderEmail[]
+}
+
+// 뉴스레터 발신자 이메일 명부 (기존 brandEmail/secondEmail/thirdEmail 3컬럼을 대체, 개수 무제한)
+model NewsletterSenderEmail {
+  id           Int        @id @default(autoincrement())
+  email        String     @unique
+  newsletter   Newsletter @relation(fields: [newsletterId], references: [id])
+  newsletterId Int
+  createdAt    DateTime   @default(now())
+
+  @@index([newsletterId])
+}
+
+// 발신자 미등록으로 수집 보류된 메일 대기소(주차장). 발신자 등록 시 자동 회수됨.
+model UnmatchedMail {
+  id            Int       @id @default(autoincrement())
+  user          User      @relation(fields: [userId], references: [id])
+  userId        Int
+  uidl          String
+  senderAddress String
+  subject       String?
+  receivedAt    DateTime?
+  status        String    @default("PENDING")
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @default(now()) @updatedAt
+
+  @@unique([userId, uidl])
+  @@index([senderAddress])
 }
 
 model Article {
@@ -116,6 +147,10 @@ model Article {
   newsletter   Newsletter @relation(fields: [newsletterId], references: [id])
   newsletterId Int
   bookmarks    Bookmark[]
+  // 메일함 원본 메일의 POP3 UIDL — 수집 진행/중복 방지의 기준 (전환기 nullable, 서비스가 1회 백필)
+  uidl         String?
+
+  @@unique([userId, uidl])
 }
 
 model Industry {

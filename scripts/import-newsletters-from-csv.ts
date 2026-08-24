@@ -1,4 +1,3 @@
-import * as crypto from 'crypto';
 import * as fs from 'fs';
 import * as path from 'path';
 import { PrismaMariaDb } from '@prisma/adapter-mariadb';
@@ -104,16 +103,6 @@ function normalizeName(value: string) {
 
 function isYes(value: string) {
   return normalizeName(value).toLowerCase() === 'yes';
-}
-
-function createEmailPlaceholder(brandName: string, suffix: string) {
-  const hash = crypto
-    .createHash('sha1')
-    .update(`${brandName}:${suffix}`)
-    .digest('hex')
-    .slice(0, 12);
-
-  return `pending-newsletter-${hash}-${suffix}@newdok.internal`;
 }
 
 function getUniqueBrandNames(rows: CsvRow[]) {
@@ -246,29 +235,24 @@ async function main() {
   const prisma = buildPrismaClient();
 
   try {
-    const [industries, interests, days, existingNewsletters] = await Promise.all([
-      prisma.industry.findMany({ orderBy: { id: 'asc' } }),
-      prisma.interest.findMany({ orderBy: { id: 'asc' } }),
-      prisma.day.findMany({ orderBy: { id: 'asc' } }),
-      prisma.newsletter.findMany({
-        select: {
-          brandName: true,
-          brandEmail: true,
-          secondEmail: true,
-          thirdEmail: true,
-        },
-      }),
-    ]);
+    const [industries, interests, days, existingNewsletters, existingSenders] =
+      await Promise.all([
+        prisma.industry.findMany({ orderBy: { id: 'asc' } }),
+        prisma.interest.findMany({ orderBy: { id: 'asc' } }),
+        prisma.day.findMany({ orderBy: { id: 'asc' } }),
+        prisma.newsletter.findMany({
+          select: {
+            brandName: true,
+          },
+        }),
+        prisma.newsletterSenderEmail.findMany({ select: { email: true } }),
+      ]);
 
     const existingBrandNames = new Set(
       existingNewsletters.map((newsletter) => newsletter.brandName),
     );
     const existingEmails = new Set(
-      existingNewsletters.flatMap((newsletter) => [
-        newsletter.brandEmail,
-        newsletter.secondEmail,
-        newsletter.thirdEmail,
-      ]),
+      existingSenders.map((sender) => sender.email),
     );
 
     const createInputs = rows
@@ -290,12 +274,13 @@ async function main() {
           days,
           '발행요일',
         );
-        const brandEmail =
-          row['뉴스레터 이메일'] || createEmailPlaceholder(brandName, 'primary');
-        const secondEmail = createEmailPlaceholder(brandName, 'secondary');
-        const thirdEmail = createEmailPlaceholder(brandName, 'tertiary');
+        // 실제 발신자 이메일이 있을 때만 NewsletterSenderEmail로 등록한다.
+        // 없으면 비워두고, 수신 후 운영에서 row를 추가한다(placeholder 폐지).
+        const senderEmails = row['뉴스레터 이메일']
+          ? [row['뉴스레터 이메일'].trim()]
+          : [];
 
-        for (const email of [brandEmail, secondEmail, thirdEmail]) {
+        for (const email of senderEmails) {
           if (existingEmails.has(email)) {
             throw new Error(`${brandName} 이메일 중복: ${email}`);
           }
@@ -313,9 +298,9 @@ async function main() {
             subscribeUrl: row['구독신청 URL'] || null,
             previewUrl: null,
             imageUrl: null,
-            brandEmail,
-            secondEmail,
-            thirdEmail,
+            senderEmails: senderEmails.length
+              ? { create: senderEmails.map((email) => ({ email })) }
+              : undefined,
             doubleCheck: isYes(row['구독확인']),
             temporaryMiss: isYes(row['휴재']) || isYes(row['숨김']),
             industries: {
@@ -333,7 +318,7 @@ async function main() {
             industries: resolvedIndustries.map((industry) => industry.name),
             interests: resolvedInterests.map((interest) => interest.name),
             days: resolvedDays.map((day) => day.name),
-            brandEmail,
+            senderEmails,
           },
         };
       });
@@ -350,7 +335,7 @@ async function main() {
           `산업군=${item.summary.industries.join('/')}`,
           `관심사=${item.summary.interests.join('/')}`,
           `요일=${item.summary.days.join('/') || '없음'}`,
-          `이메일=${item.summary.brandEmail}`,
+          `이메일=${item.summary.senderEmails.join('/') || '없음(수신 후 등록)'}`,
         ].join(' | '),
       );
     }

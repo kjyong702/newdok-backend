@@ -1,10 +1,58 @@
-import { Injectable, BadRequestException } from '@nestjs/common';
+import {
+  Injectable,
+  BadRequestException,
+  ConflictException,
+  NotFoundException,
+} from '@nestjs/common';
 import { PrismaService } from '../prisma.service';
 import { SUBSCRIPTION_STATUS } from './constants/subscription-status';
+import { isPrismaKnownRequestError } from '../common/utils/prisma-error.util';
 
 @Injectable()
 export class NewslettersService {
   constructor(private prisma: PrismaService) {}
+
+  // 운영용: 뉴스레터에 발신자 이메일 등록. 등록 즉시 다음 POP3 사이클부터 매칭/주차 메일 자동 회수에 사용된다.
+  async addSenderEmail(newsletterId: number, email: string) {
+    const trimmed = email?.trim();
+    if (!trimmed || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(trimmed)) {
+      throw new BadRequestException('올바른 이메일 형식이 아닙니다.');
+    }
+
+    const newsletter = await this.prisma.newsletter.findUnique({
+      where: { id: newsletterId },
+      select: { id: true, brandName: true },
+    });
+    if (!newsletter) {
+      throw new NotFoundException('존재하지 않는 뉴스레터입니다.');
+    }
+
+    try {
+      const created = await this.prisma.newsletterSenderEmail.create({
+        data: { newsletterId, email: trimmed },
+      });
+
+      return {
+        id: created.id,
+        newsletterId: newsletter.id,
+        brandName: newsletter.brandName,
+        email: created.email,
+        message:
+          '발신자 이메일이 등록되었습니다. 다음 수집 사이클부터 매칭되며, 주차된 메일은 자동 회수됩니다.',
+      };
+    } catch (error) {
+      if (isPrismaKnownRequestError(error) && error.code === 'P2002') {
+        const owner = await this.prisma.newsletterSenderEmail.findUnique({
+          where: { email: trimmed },
+          include: { newsletter: { select: { brandName: true } } },
+        });
+        throw new ConflictException(
+          `이미 '${owner?.newsletter.brandName ?? '다른 뉴스레터'}'에 등록된 발신자 이메일입니다.`,
+        );
+      }
+      throw error;
+    }
+  }
 
   /**
    * 유저 정보 조회 및 검증 (공통 로직)

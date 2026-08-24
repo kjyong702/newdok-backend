@@ -20,7 +20,9 @@
     "db-studio:dev": "dotenv -e .development.env -- npx prisma studio",
     "db-studio:prod": "dotenv -e .production.env -- npx prisma studio",
     "import:newsletters:dev": "dotenv -e .development.env -- ts-node scripts/import-newsletters-from-csv.ts",
-    "import:newsletters:prod": "dotenv -e .production.env -- ts-node scripts/import-newsletters-from-csv.ts"
+    "import:newsletters:prod": "dotenv -e .production.env -- ts-node scripts/import-newsletters-from-csv.ts",
+    "seed:sender-emails:dev": "dotenv -e .development.env -- ts-node scripts/seed-sender-emails.ts",
+    "seed:sender-emails:prod": "dotenv -e .production.env -- ts-node scripts/seed-sender-emails.ts"
   },
   "dependencies": {
     "@nestjs/common": "^9.0.0",

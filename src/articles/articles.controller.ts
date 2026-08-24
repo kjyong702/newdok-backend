@@ -7,10 +7,12 @@ import {
   Body,
   Req,
   UseGuards,
+  ForbiddenException,
 } from '@nestjs/common';
 import { ArticlesService } from './articles.service';
 import { AuthGuard } from '../guards/auth.guard';
 import { ARTICLE_STATUS } from './constants/article-status';
+import { ADMIN_USER_ID } from '../common/constants/admin';
 import {
   ApiTags,
   ApiOperation,
@@ -27,6 +29,47 @@ import {
 @Controller('articles')
 export class ArticlesController {
   constructor(private articlesService: ArticlesService) {}
+
+  @ApiOperation({
+    summary: '[운영] 미등록 발신자 대기 목록 조회',
+    description:
+      '발신자 미등록으로 수집 보류(주차)된 메일을 발신자별로 집계해 반환합니다. 발신자를 확인해 POST /newsletters/:id/sender-emails로 등록하면 다음 사이클에 자동 회수됩니다. master 계정 전용.',
+  })
+  @ApiBearerAuth()
+  @UseGuards(AuthGuard)
+  @ApiOkResponse({
+    description: '발신자별 대기 메일 집계',
+    schema: {
+      example: {
+        totalPending: 3,
+        pending: [
+          {
+            senderAddress: 'letter@inlevel9.com',
+            count: 3,
+            sampleSubject: '레벨나인 아홉번째 편지',
+            latestReceivedAt: '2026-08-24T09:00:00.000Z',
+            mailboxes: ['kjyong702@newdok.store'],
+          },
+        ],
+        unrecoverable: [
+          {
+            senderAddress: '(수신 실패)',
+            count: 1,
+            sampleSubject: null,
+            latestReceivedAt: null,
+            mailboxes: ['kjyong702@newdok.store'],
+          },
+        ],
+      },
+    },
+  })
+  @Get('/unmatched-senders')
+  async getUnmatchedSenders(@Req() req: any) {
+    if (req.user.id !== ADMIN_USER_ID) {
+      throw new ForbiddenException('관리자만 사용할 수 있는 기능입니다.');
+    }
+    return this.articlesService.getUnmatchedSenders();
+  }
 
   @ApiOperation({
     summary: '월 단위 날짜별 아티클 존재 여부 조회',
