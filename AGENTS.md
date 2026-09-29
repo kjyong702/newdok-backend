@@ -134,6 +134,10 @@
 - POP3 로그의 `메일 N개 / 처리됨 M개`는 UIDL 전체 개수와 신원 기록된 메일 수
   (`Article.uidl ∪ UnmatchedMail.uidl`) 비교입니다. 사이클 결과는
   `신규 저장 X건 / 회수 Y건 / 신규 주차 Z건` 요약 로그로 판단합니다.
+- RETR 응답은 파싱 전에 반드시 POP3 byte-stuffing을 복원합니다(RFC 1939,
+  `unstuffPop3Response`). node-pop3가 이 복원을 하지 않아, 빠뜨리면 `.`으로
+  시작하던 줄이 `..`으로 저장되어 이미지·링크 URL(`cdn..sanity.io`)과 CSS가
+  깨집니다. 기존 손상 본문은 `repair:dot-stuffing` 스크립트로 복구합니다.
 
 ## 뉴스레터 데이터 운영 정책
 
@@ -267,10 +271,10 @@
 npx jest src/auth/auth.controller.spec.ts src/auth/apple-auth.service.spec.ts src/auth/kakao-auth.service.spec.ts --runInBand
 ```
 
-- POP3 수집기(articles.service) 변경 시 다음 테스트를 실행합니다.
+- POP3 수집기(articles.service, articles/utils) 변경 시 다음 테스트를 실행합니다.
 
 ```text
-npx jest src/articles/articles.service.spec.ts --runInBand
+npx jest src/articles/articles.service.spec.ts src/articles/utils --runInBand
 ```
 
 - Prisma schema 변경 시 `npx prisma generate`를 실행합니다.

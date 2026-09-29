@@ -70,7 +70,7 @@ ArticlesService.POP3()
   -> UIDL list ([msgNumber, uidl] pairs)
   -> backfill legacy article uidls (one-time)
   -> for each mail not in (Article.uidl ∪ UnmatchedMail.uidl):
-       -> RETR + parse email
+       -> RETR + undo POP3 byte-stuffing + parse email
        -> match newsletter via NewsletterSenderEmail
        -> matched: create Article (with uidl) + update subscription state
        -> unmatched: park into UnmatchedMail (PENDING)
@@ -78,6 +78,45 @@ ArticlesService.POP3()
   -> log cycle summary (saved / recovered / pending senders)
   -> QUIT POP3 connection
 ```
+
+## POP3 Byte-Stuffing
+
+POP3 서버는 RETR 같은 여러 줄 응답에서 `.`으로 시작하는 줄 앞에 `.`을 하나 더
+붙여 보냅니다(RFC 1939 §3). 응답의 끝을 알리는 `.` 한 줄과 구분하기 위해서이며,
+클라이언트가 받은 뒤 이 점을 떼어내야 원본이 됩니다.
+
+사용 중인 `node-pop3`(0.9.x)는 종결 표시만 제거하고 이 복원은 하지 않습니다.
+그래서 수집기는 파싱 직전에 `unstuffPop3Response`로 직접 복원합니다
+(`src/articles/utils/mail-content.util.ts`). 원문에 정확히 한 번만 적용해야 합니다.
+라이브러리를 교체하거나 버전을 올릴 때는 라이브러리가 복원을 하는지 먼저 확인합니다.
+둘 다 복원하면 원래 `.`으로 시작하던 줄의 점까지 사라집니다.
+
+복원을 빠뜨리면 다음처럼 깨집니다.
+
+- quoted-printable 메일: 줄바꿈 위치에 있던 점이 URL 한가운데 남아 이미지와
+  링크가 열리지 않습니다. 예: `cdn..sanity.io`, `maily..so`
+- 8bit 메일: `.`으로 시작하던 CSS 선택자가 `..wrap{}`처럼 깨져 스타일이 빠집니다.
+- 줄이 `.`으로 시작하지 않는 메일은 영향이 없습니다. 2026-09 점검 기준 영향
+  브랜드는 The Monocle Minute, Morning Brew, Trend A Word 등 12종이었습니다.
+
+웹메일은 POP3를 거치지 않으므로 같은 메일이 정상으로 보입니다. 웹메일의
+"외부 리소스 차단" 안내는 개인정보 보호용 표시 설정이며 이 문제와 무관합니다.
+
+### 기존 본문 복구
+
+수정 배포 전에 수집된 본문은 스크립트로 복구합니다. 본문에 `..`이 있는 아티클을
+후보로 메일함에서 uidl로 원본을 다시 받아 복원·재파싱하고, 새 본문이 "저장본에서
+점만 제거한 결과"일 때만 갱신합니다. 제목이 다르거나 점 외의 차이가 있으면
+건너뜁니다. 갱신 직전 기존 행을 `~/newdok-backups`에 JSONL로 백업합니다.
+
+```text
+npm run repair:dot-stuffing:dev                 # dry-run
+npm run repair:dot-stuffing:dev -- --apply      # 백업 후 갱신
+npm run repair:dot-stuffing:prod -- --apply     # dev 검수 + 명시적 승인 후
+```
+
+수정 배포 후에 실행해야 새로 들어오는 메일까지 한 번에 정리됩니다. 재실행해도
+이미 복구된 본문은 "변화 없음"으로 건너뛰므로 안전합니다.
 
 ## Sender Matching
 
