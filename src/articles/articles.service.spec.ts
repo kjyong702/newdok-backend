@@ -404,4 +404,39 @@ describe('ArticlesService (UIDL 수집기)', () => {
       expect(sql).toContain("WHEN 1 THEN 'a''b\\\\c'");
     });
   });
+
+  describe('POP3 byte-stuffing 복원', () => {
+    it('fetchAndParseMail: 스터핑된 RETR 응답을 복원해 URL·CSS가 깨지지 않는다', async () => {
+      const prisma = createMockPrisma();
+      const service = createService(prisma);
+      // 서버가 보낸 그대로의 RETR 응답: '.'으로 시작하는 줄마다 '.'이 하나 더 붙어 있다.
+      // QP 소프트 줄바꿈(=) 직후의 점은 복원하지 않으면 URL 한가운데 '..'으로 남는다.
+      const stuffedResponse = [
+        'From: news@brew.com',
+        'Subject: stuffing',
+        'Date: Mon, 24 Aug 2026 09:00:00 +0900',
+        'MIME-Version: 1.0',
+        'Content-Type: text/html; charset=utf-8',
+        'Content-Transfer-Encoding: quoted-printable',
+        '',
+        '<html><head><style>',
+        '..wrap{color:red}',
+        '</style></head><body><img src=3D"https://cdn=',
+        '..sanity.io/a.png"><a href=3D"https://maily=',
+        '..so/click">link</a></body></html>',
+      ].join('\r\n');
+      const pop3 = { RETR: jest.fn().mockResolvedValue(stuffedResponse) };
+
+      const parsed = await (service as any).fetchAndParseMail(
+        pop3,
+        '1',
+        'test',
+      );
+
+      expect(parsed.html).toContain('<img src="https://cdn.sanity.io/a.png">');
+      expect(parsed.html).toContain('<a href="https://maily.so/click">');
+      expect(parsed.html).toContain('\n.wrap{color:red}');
+      expect(parsed.html).not.toContain('..');
+    });
+  });
 });

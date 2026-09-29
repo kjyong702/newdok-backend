@@ -2,7 +2,6 @@ import { Injectable } from '@nestjs/common';
 import { PrismaService } from '../prisma.service';
 import { simpleParser, ParsedMail } from 'mailparser';
 import Pop3Command from 'node-pop3';
-import { parse } from 'node-html-parser';
 import { Newsletter } from '@prisma/client';
 import { SUBSCRIPTION_STATUS } from '../newsletters/constants/subscription-status';
 import { ARTICLE_STATUS } from './constants/article-status';
@@ -11,6 +10,10 @@ import {
   UnmatchedMailStatus,
 } from './constants/unmatched-mail-status';
 import { isPrismaKnownRequestError } from '../common/utils/prisma-error.util';
+import {
+  buildArticleContent,
+  unstuffPop3Response,
+} from './utils/mail-content.util';
 
 // RETR 실패(특히 타임아웃) 후에는 같은 POP3 연결의 명령-응답 짝이 어긋날 수 있어
 // (늦게 도착한 응답이 다음 명령의 응답으로 오인됨) 세션을 더 신뢰할 수 없다.
@@ -383,8 +386,9 @@ export class ArticlesService {
       throw new Pop3SessionAbortError(this.getErrorMessage(error));
     }
 
+    // node-pop3는 RETR 응답의 byte-stuffing을 되돌리지 않으므로 파싱 전에 복원한다 (RFC 1939)
     return this.withTimeout(
-      simpleParser(rawEmail),
+      simpleParser(unstuffPop3Response(rawEmail)),
       this.MAIL_PARSE_TIMEOUT_MS,
       `[POP3] ${label} parse ${msgNumber}`,
     );
@@ -496,15 +500,8 @@ export class ArticlesService {
     const kstDate = new Date(utcDate.getTime() + KR_TIME_DIFF);
 
     const stringifyHTML = (parsedEmail.html || parsedEmail.text || '') as string;
-
-    // 본문 미리보기 텍스트 생성
-    const firstTwoBody = await this.extractTwoSentenceOfArticle(stringifyHTML);
-    // 아티클 본문에서 순수 텍스트 추출
-    const plainBody = stringifyHTML
-      .replace(/<style[^>]*>@media[\s\S]*?<\/style>/gi, '')
-      .replace(/<[^>]*>/g, ' ')
-      .replace(/\s+/g, ' ')
-      .trim();
+    // 본문 / 미리보기 / 순수 텍스트 (복구 스크립트와 같은 규칙을 쓰도록 공용 유틸 사용)
+    const content = buildArticleContent(stringifyHTML);
 
     let article;
     try {
@@ -513,9 +510,9 @@ export class ArticlesService {
           data: {
             // VarChar(191) 초과로 인한 저장 실패(P2000) 방지
             title: (parsedEmail.subject || '제목 없음').slice(0, 191),
-            body: stringifyHTML,
-            firstTwoBody: firstTwoBody || '',
-            plainBody,
+            body: content.body,
+            firstTwoBody: content.firstTwoBody,
+            plainBody: content.plainBody,
             date: utcDate,
             publishYear: kstDate.getUTCFullYear(),
             publishMonth: kstDate.getUTCMonth() + 1,
@@ -996,36 +993,6 @@ export class ArticlesService {
     });
 
     return user._count.articles;
-  }
-
-  // 아티클 미리보기 본문 추출
-  async extractTwoSentenceOfArticle(articleBody: string) {
-    const root = parse(articleBody);
-
-    const selectedElements = root.querySelectorAll(
-      '.stb-fore-colored, .stb-bold',
-    );
-    const elements =
-      selectedElements.length === 0
-        ? root.getElementsByTagName('*')
-        : selectedElements;
-
-    const filteredElements = elements.filter((element) => {
-      const style = element.getAttribute('style');
-      const hasColorStyle = style && style.includes('color');
-      const isBlackText = style && style.includes('color: #000000;');
-
-      const hasHref = element.getAttribute('href');
-
-      const isValidText =
-        /[가-힣]/.test(element.text) && element.text.length > 10;
-
-      return !hasHref && (!hasColorStyle || isBlackText) && isValidText;
-    });
-
-    return filteredElements.length > 2
-      ? filteredElements[1].text + ' ' + filteredElements[2].text
-      : filteredElements[0]?.text;
   }
 
   // 아티클 북마크 요청 및 취소

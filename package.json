@@ -22,7 +22,9 @@
     "import:newsletters:dev": "dotenv -e .development.env -- ts-node scripts/import-newsletters-from-csv.ts",
     "import:newsletters:prod": "dotenv -e .production.env -- ts-node scripts/import-newsletters-from-csv.ts",
     "seed:sender-emails:dev": "dotenv -e .development.env -- ts-node scripts/seed-sender-emails.ts",
-    "seed:sender-emails:prod": "dotenv -e .production.env -- ts-node scripts/seed-sender-emails.ts"
+    "seed:sender-emails:prod": "dotenv -e .production.env -- ts-node scripts/seed-sender-emails.ts",
+    "repair:dot-stuffing:dev": "dotenv -e .development.env -- ts-node scripts/repair-dot-stuffed-articles.ts --label dev",
+    "repair:dot-stuffing:prod": "dotenv -e .production.env -- ts-node scripts/repair-dot-stuffed-articles.ts --label prod"
   },
   "dependencies": {
     "@nestjs/common": "^9.0.0",
