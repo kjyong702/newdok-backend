@@ -27,8 +27,12 @@ async function bootstrap() {
   app.useStaticAssets(join(__dirname, '..', '..', 'public'), {
     prefix: '/public',
   });
+  // dev는 웹 테스트 주소가 자주 바뀌므로 CORS_ALLOW_ALL_ORIGINS=true로 전체 허용, prod는 목록만 허용
   app.enableCors({
-    origin: ['https://newdok.vercel.app', 'http://localhost:3000'],
+    origin:
+      process.env.CORS_ALLOW_ALL_ORIGINS === 'true'
+        ? true
+        : ['https://newdok.vercel.app', 'http://localhost:3000'],
   });
   const config = new DocumentBuilder()
     .setTitle('Newdok API description')

@@ -15,6 +15,7 @@ import { MAILBOX_POOL_STATUS } from '../users/constants/mailbox-pool-status';
 import { AUTH_PROVIDER } from './constants/auth-provider';
 import { USER_CONSENT_POLICY } from './constants/user-consent-policy';
 import { AppleAuthService } from './apple-auth.service';
+import { KakaoAuthService } from './kakao-auth.service';
 import { SocialSignupDto } from './dtos/social-signup.dto';
 import { SocialAuthDto } from './dtos/social-auth.dto';
 import { AUTH_PLATFORM } from './constants/auth-platform';
@@ -63,6 +64,7 @@ export class AuthService {
     private jwtService: JwtService,
     private configService: ConfigService,
     private appleAuthService: AppleAuthService,
+    private kakaoAuthService: KakaoAuthService,
   ) {}
 
   async sendTwilioSMS(phoneNumber: string) {
@@ -363,7 +365,13 @@ export class AuthService {
   }
 
   private async authenticateKakao(body: SocialAuthDto) {
-    const kakaoUser = await this.verifyKakaoIdToken(body.idToken);
+    const kakaoUser =
+      body.platform === AUTH_PLATFORM.WEB
+        ? await this.authenticateKakaoWeb(body)
+        : await this.verifyKakaoIdToken(
+            body.idToken,
+            this.getKakaoAppAudience(),
+          );
 
     return {
       provider: AUTH_PROVIDER.KAKAO,
@@ -416,6 +424,7 @@ export class AuthService {
         await this.appleAuthService.exchangeAuthorizationCode(
           body.authorizationCode,
           body.platform,
+          body.redirectUri,
         );
 
       if (
@@ -445,15 +454,45 @@ export class AuthService {
     return this.jwtService.signAsync({ id: userId });
   }
 
-  private async verifyKakaoIdToken(idToken: string): Promise<KakaoUserProfile> {
-    const audience =
+  // 웹은 인가 코드만 받아 오고, 토큰 교환은 Client Secret을 가진 서버가 수행한다.
+  private async authenticateKakaoWeb(body: SocialAuthDto) {
+    const idToken = await this.kakaoAuthService.exchangeAuthorizationCode(
+      body.authorizationCode,
+      body.redirectUri,
+    );
+
+    return this.verifyKakaoIdToken(idToken, this.getKakaoWebAudience());
+  }
+
+  // 앱 SDK idToken의 aud는 네이티브 앱 키
+  private getKakaoAppAudience() {
+    return (
       this.configService.get<string>('KAKAO_OIDC_AUDIENCE') ??
       this.configService.get<string>('KAKAO_NATIVE_APP_KEY') ??
       this.getRequiredEnvValue(
         'KAKAO_REST_API_KEY',
         '카카오 로그인 앱 키 설정이 완료되지 않았습니다.',
-      );
+      )
+    );
+  }
 
+  // 웹 idToken의 aud는 인가 코드를 요청한 키: REST API 키, 또는 JS SDK를 쓴 경우 JavaScript 키
+  private getKakaoWebAudience() {
+    const restApiKey = this.getRequiredEnvValue(
+      'KAKAO_REST_API_KEY',
+      '카카오 로그인 앱 키 설정이 완료되지 않았습니다.',
+    );
+    const javascriptKey = this.configService.get<string>(
+      'KAKAO_JAVASCRIPT_KEY',
+    );
+
+    return javascriptKey ? [restApiKey, javascriptKey] : [restApiKey];
+  }
+
+  private async verifyKakaoIdToken(
+    idToken: string,
+    audience: string | string[],
+  ): Promise<KakaoUserProfile> {
     try {
       const { payload } = await jwtVerify(idToken, KAKAO_JWKS, {
         issuer: KAKAO_ISSUER,

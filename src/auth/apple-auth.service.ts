@@ -57,20 +57,28 @@ export class AppleAuthService {
   async exchangeAuthorizationCode(
     authorizationCode: string,
     platform: string,
+    redirectUri?: string,
   ): Promise<AppleRevokeCredential> {
     const clientId = this.getClientId(platform);
     const clientSecret = await this.createClientSecret(clientId);
+    const params = new URLSearchParams({
+      client_id: clientId,
+      client_secret: clientSecret,
+      code: authorizationCode,
+      grant_type: 'authorization_code',
+    });
+
+    // 웹(Services ID)에서 받은 code는 인가 요청에 쓴 redirect_uri가 함께 있어야 교환된다.
+    if (redirectUri) {
+      params.set('redirect_uri', redirectUri);
+    }
+
     const response = await fetch('https://appleid.apple.com/auth/token', {
       method: 'POST',
       headers: {
         'Content-Type': 'application/x-www-form-urlencoded;charset=utf-8',
       },
-      body: new URLSearchParams({
-        client_id: clientId,
-        client_secret: clientSecret,
-        code: authorizationCode,
-        grant_type: 'authorization_code',
-      }),
+      body: params,
     });
 
     if (!response.ok) {

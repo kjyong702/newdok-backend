@@ -20,6 +20,7 @@ describe('AppleAuthService', () => {
     ['APPLE_TEAM_ID', 'TEST_TEAM_ID'],
     ['APPLE_KEY_ID', 'TEST_KEY_ID'],
     ['APPLE_CLIENT_ID', 'com.newdok.test'],
+    ['APPLE_WEB_CLIENT_ID', 'com.newdok.dev.web'],
     ['APPLE_PRIVATE_KEY_BASE64', Buffer.from(privateKey).toString('base64')],
     ['PROVIDER_TOKEN_ENCRYPTION_KEY', Buffer.alloc(32, 1).toString('base64')],
   ]);
@@ -99,6 +100,35 @@ describe('AppleAuthService', () => {
       expect(params.get('grant_type')).toBe('authorization_code');
       expect(params.get('code')).toBe('auth-code');
       expect(params.get('client_id')).toBe('com.newdok.test');
+      expect(params.has('redirect_uri')).toBe(false);
+    });
+
+    it('웹은 Services ID와 redirect_uri로 authorization code를 교환한다', async () => {
+      fetchMock = jest.spyOn(global, 'fetch').mockResolvedValue({
+        ok: true,
+        json: async () => ({
+          refresh_token: 'apple-refresh-token',
+          id_token: createFakeIdToken('apple-user-1'),
+        }),
+      } as Response);
+
+      const credential = await service.exchangeAuthorizationCode(
+        'auth-code',
+        'WEB',
+        'https://newdok.vercel.app/login',
+      );
+
+      const [, init] = fetchMock.mock.calls[0] as [string, RequestInit];
+      const params = init.body as URLSearchParams;
+
+      expect(credential.providerClientId).toBe('com.newdok.dev.web');
+      expect(params.get('client_id')).toBe('com.newdok.dev.web');
+      expect(params.get('redirect_uri')).toBe(
+        'https://newdok.vercel.app/login',
+      );
+      expect(decodeJwt(params.get('client_secret'))).toMatchObject({
+        sub: 'com.newdok.dev.web',
+      });
     });
 
     it('Apple 토큰 교환에 실패하면 UnauthorizedException을 던진다', async () => {
