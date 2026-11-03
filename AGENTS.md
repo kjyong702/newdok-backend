@@ -64,8 +64,14 @@
 
 - 지원 provider는 현재 `KAKAO`, `APPLE`입니다.
 - 카카오는 카카오 디벨로퍼스에서 OpenID Connect를 활성화해야 합니다.
-- 카카오 `idToken` 검증의 `aud` 값은 `KAKAO_OIDC_AUDIENCE`를 우선 사용합니다.
-- Apple iOS `idToken` 검증의 `aud` 값은 `APPLE_CLIENT_ID`를 사용합니다.
+- 카카오 앱(`IOS`/`ANDROID`) `idToken` 검증의 `aud` 값은 `KAKAO_OIDC_AUDIENCE`
+  (네이티브 앱 키)를 우선 사용합니다.
+- 카카오 웹(`KAKAO` + `WEB`)은 `idToken` 대신 `authorizationCode` + `redirectUri`를
+  받고, 서버가 `KAKAO_REST_API_KEY` + `KAKAO_CLIENT_SECRET`으로 토큰을 교환해 받은
+  idToken을 검증합니다. `aud`는 REST API 키(JS SDK 사용 시 `KAKAO_JAVASCRIPT_KEY`도 허용).
+- Apple iOS `idToken` 검증의 `aud` 값은 `APPLE_CLIENT_ID`, Apple 웹은
+  `APPLE_WEB_CLIENT_ID`(Services ID)를 사용합니다. Apple 웹은 `authorizationCode` 교환
+  시 `redirectUri`를 함께 받아 `redirect_uri`로 전달합니다.
 - Apple 로그인 요청에 `authorizationCode`(선택)가 오면 서버가 refresh token으로
   교환해 AES-256-GCM으로 암호화 저장하고, 탈퇴 시 Apple revoke에 사용합니다.
   교환 실패는 로그인 자체를 막지 않습니다.
@@ -85,16 +91,18 @@
 
 **진행 중**
 
-- 앱 우선 소셜 로그인 전환.
+- 앱 우선 소셜 로그인 전환(iOS 연동 완료, AOS 미진행).
 - 카카오/애플 OIDC `idToken` 기반 로그인/회원가입.
 - 소셜 탈퇴: provider 연결 해제(카카오 unlink, 애플 revoke) 포함 탈퇴 플로우.
-- 앱 개발자 실제 연동 테스트 대기(애플은 `authorizationCode` 파라미터 추가 예정).
+- 웹 소셜 로그인: 카카오(서버 인가 코드 교환), 애플(Services ID). 웹 개발자 실제
+  연동 테스트 대기.
 
 **보류**
 
 - 기존 로컬 회원가입/로그인/SMS 인증 제거.
 - 소셜 계정 연결 또는 계정 병합.
-- Web OAuth/OIDC callback flow.
+- 서버가 provider redirect를 직접 받는 Web OAuth callback flow(현재는 웹 프론트가
+  callback을 받아 code를 서버에 전달).
 - 뉴스레터 데이터 운영 어드민.
 
 **현재 정책**
@@ -208,9 +216,11 @@
 - dev 배포 전 `.development.env`에 필요한 env가 있는지 확인합니다.
 - prod 배포 전 `.production.env`에 prod용 값이 들어있는지 확인합니다.
 - 소셜 로그인 배포 시 특히 다음 값을 확인합니다.
-  - dev Apple: `APPLE_CLIENT_ID=com.newdok.test`
-  - prod Apple: `APPLE_CLIENT_ID=com.newdok.app`
+  - dev Apple: `APPLE_CLIENT_ID=com.newdok.test`, `APPLE_WEB_CLIENT_ID=com.newdok.dev.web`
+  - prod Apple: `APPLE_CLIENT_ID=com.newdok.app`, `APPLE_WEB_CLIENT_ID=com.newdok.web`
   - Kakao: `KAKAO_OIDC_AUDIENCE`가 실제 idToken `aud`와 일치하는지
+  - Kakao 웹: `KAKAO_REST_API_KEY`, `KAKAO_CLIENT_SECRET`(콘솔에서 활성화된 경우)
+  - CORS: dev만 `CORS_ALLOW_ALL_ORIGINS=true`, prod에는 설정하지 않음
 - 배포 후 Swagger UI는 최신 빌드와 서버 재시작이 반영되어야 합니다.
 
 ## 계층 규칙
@@ -256,6 +266,11 @@
   - `APPLE_CLIENT_ID`
   - `DATABASE_URL`
   - `JWT_SECRET_KEY`
+- 웹 소셜 로그인에는 추가로 다음 값이 필요합니다.
+  - `APPLE_WEB_CLIENT_ID`: Apple 웹 Services ID
+  - `KAKAO_CLIENT_SECRET`: 카카오 로그인 Client Secret(비활성화 시 비움)
+  - `KAKAO_JAVASCRIPT_KEY`: (선택) 웹이 카카오 JS SDK로 인가 코드를 받는 경우
+  - `CORS_ALLOW_ALL_ORIGINS`: (dev 전용) `true`면 모든 origin 허용
 - 소셜 탈퇴(연결 해제)에는 추가로 다음 값이 필요합니다.
   - `KAKAO_ADMIN_KEY`: 카카오 unlink Admin Key
   - `APPLE_TEAM_ID`, `APPLE_KEY_ID`: Apple client secret 서명용
@@ -296,6 +311,9 @@ npx jest src/articles/articles.service.spec.ts src/articles/utils --runInBand
   `KAKAO_OIDC_AUDIENCE`와 실제 idToken `aud` 불일치를 확인합니다.
 - `401 Apple identity token이 유효하지 않습니다.`가 발생하면 `APPLE_CLIENT_ID`와
   Apple idToken `aud` 불일치를 확인합니다.
+- `401 카카오 인가 코드 교환에 실패했습니다.`가 발생하면 message의 카카오 에러 코드를
+  봅니다. `KOE320`은 만료/재사용된 code, `KOE303`은 `redirectUri` 불일치, `KOE010`은
+  `KAKAO_CLIENT_SECRET`/REST API 키 불일치입니다.
 - Kakao/Apple JWKS는 `jose`의 `createRemoteJWKSet`이 프로세스 메모리에 캐싱합니다.
   Redis 캐시는 현재 필요하지 않습니다.
 - idToken 전체를 채팅이나 문서에 남기지 않습니다. 필요한 경우 payload의 `aud`
